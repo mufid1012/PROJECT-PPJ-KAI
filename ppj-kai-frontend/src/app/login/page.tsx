@@ -28,7 +28,7 @@ export default function LoginPage() {
     const timer = setTimeout(async () => {
       try {
         setNippStatus('loading');
-        const res = await api.get(`/auth/check/${nipp}`);
+        const res = await api.get(`/auth/check/${nipp.trim()}`);
         if (res.data.exists) {
           setNippStatus('verified');
           setVerifiedUser(res.data.user);
