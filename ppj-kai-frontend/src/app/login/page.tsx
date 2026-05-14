@@ -12,10 +12,10 @@ export default function LoginPage() {
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
-  
+
   // Real-time verification state
   const [nippStatus, setNippStatus] = useState<'idle' | 'loading' | 'verified' | 'not_found'>('idle');
-  const [verifiedUser, setVerifiedUser] = useState<{nama: string, role: string} | null>(null);
+  const [verifiedUser, setVerifiedUser] = useState<{ nama: string, role: string } | null>(null);
 
   useEffect(() => {
     if (nipp.length < 5) {
@@ -69,27 +69,27 @@ export default function LoginPage() {
       {/* Left Column: Branding & Illustration (Hidden on Mobile) */}
       <div className="hidden lg:flex lg:w-[45%] relative bg-primary-fixed overflow-hidden flex-col justify-between p-xl">
         {/* Background Image */}
-        <div 
-          className="absolute inset-0 bg-cover bg-center opacity-80" 
+        <div
+          className="absolute inset-0 bg-cover bg-center opacity-80"
           style={{ backgroundImage: "url('/cc206.png')" }}
 
         />
         {/* Dark Gradient Overlay for text legibility */}
         <div className="absolute inset-0 bg-gradient-to-t from-primary/95 via-primary/60 to-primary/20 mix-blend-multiply"></div>
-        
+
         {/* Brand Content */}
         <div className="relative z-10 flex items-center gap-3 text-on-primary">
           <img src="/logo-kai.png" alt="Logo KAI" className="h-10 w-auto object-contain drop-shadow-md" />
           <h1 className="font-h2 text-h2 font-bold tracking-tight">Petugas Pemeriksa Jalur</h1>
         </div>
-        
+
         <div className="relative z-10 text-on-primary max-w-lg">
-          <h2 className="font-h1 text-h1 mb-md leading-tight">Monitoring Petugas Pemeriksa Jalur<br/>DAOP 6 Yogyakarta.</h2>
+          <h2 className="font-h1 text-h1 mb-md leading-tight">Monitoring Petugas Pemeriksa Jalur<br />DAOP 6 Yogyakarta.</h2>
 
           <p className="font-body-lg text-body-lg text-primary-fixed-dim">
             Empowering track maintenance divisions with real-time data, predictive analytics, and seamless field reporting to ensure the highest safety standards across the network.
           </p>
-          
+
           {/* Trust Indicators */}
           <div className="flex gap-lg mt-xl pt-lg border-t border-primary-fixed-dim/30">
             <div>
@@ -110,15 +110,15 @@ export default function LoginPage() {
           {/* Mobile Logo (Visible only on small screens) */}
           <div className="flex lg:hidden items-center gap-3 mb-xl">
             <img src="/logo-kai.png" alt="Logo KAI" className="h-10 w-auto object-contain" />
-            <h1 className="font-h2 text-h2 font-bold text-primary tracking-tight">RailTrack PPJ</h1>
+            <h1 className="font-h2 text-h2 font-bold text-primary tracking-tight">Petugas Pemeriksa Jalur</h1>
           </div>
-          
+
           {/* Page Header */}
           <div className="mb-lg">
             <h2 className="font-h1 text-h1 text-on-surface mb-2">Access Portal</h2>
             <p className="font-body-md text-body-md text-on-surface-variant">Enter your credentials to manage field assignments and track health.</p>
           </div>
-          
+
           {/* Login Form */}
           <form className="flex flex-col gap-lg" onSubmit={handleLogin}>
             {error && (
@@ -126,17 +126,17 @@ export default function LoginPage() {
                 {error}
               </div>
             )}
-            
+
             {/* NIPP Input */}
             <div className="flex flex-col gap-2">
               <label className="font-label-sm text-label-sm text-on-surface" htmlFor="nipp">NIPP (Employee ID)</label>
               <div className="relative group">
                 <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-outline group-focus-within:text-primary transition-colors">badge</span>
-                <input 
-                  className="w-full pl-10 pr-10 py-3 bg-surface-container-lowest border border-outline-variant rounded-lg focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-all font-body-lg text-body-lg text-on-surface placeholder:text-outline shadow-sm" 
-                  id="nipp" 
-                  placeholder="Enter your NIPP" 
-                  type="text" 
+                <input
+                  className="w-full pl-10 pr-10 py-3 bg-surface-container-lowest border border-outline-variant rounded-lg focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-all font-body-lg text-body-lg text-on-surface placeholder:text-outline shadow-sm"
+                  id="nipp"
+                  placeholder="Enter your NIPP"
+                  type="text"
                   value={nipp}
                   onChange={(e) => setNipp(e.target.value)}
                 />
@@ -181,7 +181,7 @@ export default function LoginPage() {
                 </div>
               </div>
             )}
-            
+
             {/* Password Input */}
             <div className="flex flex-col gap-2">
               <div className="flex justify-between items-center">
@@ -190,16 +190,16 @@ export default function LoginPage() {
               </div>
               <div className="relative group">
                 <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-outline group-focus-within:text-primary transition-colors">lock</span>
-                <input 
-                  className="w-full pl-10 pr-10 py-3 bg-surface-container-lowest border border-outline-variant rounded-lg focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-all font-body-lg text-body-lg text-on-surface shadow-sm" 
-                  id="password" 
-                  placeholder="Enter password" 
-                  type={showPassword ? "text" : "password"} 
+                <input
+                  className="w-full pl-10 pr-10 py-3 bg-surface-container-lowest border border-outline-variant rounded-lg focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-all font-body-lg text-body-lg text-on-surface shadow-sm"
+                  id="password"
+                  placeholder="Enter password"
+                  type={showPassword ? "text" : "password"}
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                 />
-                <button 
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-outline hover:text-on-surface transition-colors focus:outline-none" 
+                <button
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-outline hover:text-on-surface transition-colors focus:outline-none"
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
                 >
@@ -207,11 +207,11 @@ export default function LoginPage() {
                 </button>
               </div>
             </div>
-            
+
             {/* Actions */}
             <div className="mt-2 flex flex-col gap-4">
-              <button 
-                className="w-full h-12 bg-primary text-on-primary rounded-xl font-label-sm text-label-sm shadow-[0px_8px_24px_rgba(0,91,172,0.15)] hover:bg-surface-tint active:scale-[0.98] transition-all flex items-center justify-center gap-2 uppercase tracking-wider disabled:opacity-70 disabled:cursor-not-allowed" 
+              <button
+                className="w-full h-12 bg-primary text-on-primary rounded-xl font-label-sm text-label-sm shadow-[0px_8px_24px_rgba(0,91,172,0.15)] hover:bg-surface-tint active:scale-[0.98] transition-all flex items-center justify-center gap-2 uppercase tracking-wider disabled:opacity-70 disabled:cursor-not-allowed"
                 type="submit"
                 disabled={isLoading}
               >
@@ -223,7 +223,7 @@ export default function LoginPage() {
               </p>
             </div>
           </form>
-          
+
           {/* Footer Info */}
           <div className="mt-xl pt-xl border-t border-surface-container-highest text-center">
             <p className="font-label-sm text-label-sm text-outline">
