@@ -55,10 +55,8 @@ export default function RegisterPage() {
 
         {/* Brand Content */}
         <div className="relative z-10 flex items-center gap-3 text-on-primary">
-          <div className="w-10 h-10 bg-on-primary text-primary rounded-lg flex items-center justify-center shadow-md">
-            <span className="material-symbols-outlined" style={{ fontVariationSettings: "'FILL' 1" }}>train</span>
-          </div>
-          <h1 className="font-h2 text-h2 font-bold tracking-tight">Petugas Pemeriksa Jalur</h1>
+          <img src="/logo-kai.png" alt="KAI Logo" className="h-10 w-auto object-contain" />
+          <h1 className="font-h2 text-h2 font-bold tracking-tight">RailTrack PPJ</h1>
         </div>
 
         <div className="relative z-10 text-on-primary max-w-lg">
@@ -74,9 +72,7 @@ export default function RegisterPage() {
         <div className="w-full max-w-[420px]">
           {/* Mobile Logo (Visible only on small screens) */}
           <div className="flex lg:hidden items-center gap-3 mb-xl">
-            <div className="w-10 h-10 bg-primary text-on-primary rounded-lg flex items-center justify-center shadow-sm">
-              <span className="material-symbols-outlined" style={{ fontVariationSettings: "'FILL' 1" }}>train</span>
-            </div>
+            <img src="/logo-kai.png" alt="KAI Logo" className="h-10 w-auto object-contain" />
             <h1 className="font-h2 text-h2 font-bold text-primary tracking-tight">RailTrack PPJ</h1>
           </div>
 
