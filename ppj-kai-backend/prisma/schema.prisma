@@ -1,0 +1,75 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id        Int       @id @default(autoincrement())
+  nipp      String    @unique @db.VarChar(20)
+  nama      String    @db.VarChar(100)
+  password  String    @db.VarChar(255)
+  foto      String?   @db.Text
+  role      String    @default("petugas") @db.VarChar(20) // admin | petugas
+  tugasPpj  TugasPpj[]
+  createdAt DateTime  @default(now()) @map("created_at")
+  updatedAt DateTime  @updatedAt @map("updated_at")
+
+  @@map("users")
+}
+
+model TugasPpj {
+  id             Int       @id @default(autoincrement())
+  jalur          String    @db.VarChar(200)
+  tanggal        DateTime  @db.Date
+  startPointLat  Float     @map("start_point_lat")
+  startPointLong Float     @map("start_point_long")
+  endPointLat    Float     @map("end_point_lat")
+  endPointLong   Float     @map("end_point_long")
+  startPointName String?   @map("start_point_name") @db.VarChar(200)
+  endPointName   String?   @map("end_point_name") @db.VarChar(200)
+  assignedTo     Int       @map("assigned_to")
+  status         String    @default("pending") @db.VarChar(20) // pending | in_progress | completed | cancelled
+  user           User      @relation(fields: [assignedTo], references: [id])
+  tracking       Tracking[]
+  createdAt      DateTime  @default(now()) @map("created_at")
+  updatedAt      DateTime  @updatedAt @map("updated_at")
+
+  @@map("tugas_ppj")
+}
+
+model Tracking {
+  id        Int       @id @default(autoincrement())
+  tugasId   Int       @map("tugas_id")
+  startTime DateTime? @map("start_time")
+  endTime   DateTime? @map("end_time")
+  startLat  Float?    @map("start_lat")
+  startLong Float?    @map("start_long")
+  endLat    Float?    @map("end_lat")
+  endLong   Float?    @map("end_long")
+  durasi    Int?      @default(0)
+  status    String    @default("started") @db.VarChar(20)
+  tugas     TugasPpj  @relation(fields: [tugasId], references: [id])
+  laporan   Laporan[]
+  createdAt DateTime  @default(now()) @map("created_at")
+  updatedAt DateTime  @updatedAt @map("updated_at")
+
+  @@map("tracking")
+}
+
+model Laporan {
+  id            Int      @id @default(autoincrement())
+  trackingId    Int      @map("tracking_id")
+  jenisTemuan   String   @map("jenis_temuan") @db.VarChar(20)
+  deskripsi     String   @db.Text
+  foto          String?  @db.Text
+  latitude      Float
+  longitude     Float
+  tracking      Tracking @relation(fields: [trackingId], references: [id])
+  createdAt     DateTime @default(now()) @map("created_at")
+
+  @@map("laporan")
+}
