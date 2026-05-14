@@ -81,7 +81,7 @@ export default function LoginPage() {
         {/* Brand Content */}
         <div className="relative z-10 flex items-center gap-3 text-on-primary">
           <Image src="/logo-kai.png" alt="Logo KAI" width={48} height={48} className="object-contain drop-shadow-md" />
-          <h1 className="font-h2 text-h2 font-bold tracking-tight">KAI RailTrack PPJ</h1>
+          <h1 className="font-h2 text-h2 font-bold tracking-tight">Petugas Pemeriksa Jalur</h1>
         </div>
         
         <div className="relative z-10 text-on-primary max-w-lg">
