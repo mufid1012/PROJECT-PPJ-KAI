@@ -56,7 +56,7 @@ export default function RegisterPage() {
         {/* Brand Content */}
         <div className="relative z-10 flex items-center gap-3 text-on-primary">
           <img src="/logo-kai.png" alt="KAI Logo" className="h-10 w-auto object-contain" />
-          <h1 className="font-h2 text-h2 font-bold tracking-tight">RailTrack PPJ</h1>
+          <h1 className="font-h2 text-h2 font-bold tracking-tight">Petugas Pemeriksa Jalur</h1>
         </div>
 
         <div className="relative z-10 text-on-primary max-w-lg">
@@ -73,7 +73,7 @@ export default function RegisterPage() {
           {/* Mobile Logo (Visible only on small screens) */}
           <div className="flex lg:hidden items-center gap-3 mb-xl">
             <img src="/logo-kai.png" alt="KAI Logo" className="h-10 w-auto object-contain" />
-            <h1 className="font-h2 text-h2 font-bold text-primary tracking-tight">RailTrack PPJ</h1>
+            <h1 className="font-h2 text-h2 font-bold text-primary tracking-tight">Petugas Pemeriksa Jalur</h1>
           </div>
 
           {/* Page Header */}
