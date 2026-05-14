@@ -45,6 +45,54 @@ export const login = async (req: Request, res: Response) => {
   }
 };
 
+export const register = async (req: Request, res: Response) => {
+  try {
+    const { nipp, password, nama, role, foto } = req.body;
+
+    if (!nipp || !password || !nama) {
+      return res.status(400).json({ success: false, message: 'NIPP, nama, and password are required' });
+    }
+
+    const existingUser = await prisma.user.findUnique({
+      where: { nipp },
+    });
+
+    if (existingUser) {
+      return res.status(400).json({ success: false, message: 'NIPP already registered' });
+    }
+
+    const hashedPassword = await bcrypt.hash(password, 10);
+
+    const user = await prisma.user.create({
+      data: {
+        nipp,
+        nama,
+        password: hashedPassword,
+        role: role || 'petugas',
+        foto: foto || null,
+      },
+    });
+
+    const token = generateToken(user.id, user.role);
+
+    return res.status(201).json({
+      success: true,
+      message: 'Registration successful',
+      token,
+      user: {
+        id: user.id,
+        nipp: user.nipp,
+        nama: user.nama,
+        role: user.role,
+        foto: user.foto,
+      },
+    });
+  } catch (error) {
+    console.error('Register error:', error);
+    return res.status(500).json({ success: false, message: 'Internal server error' });
+  }
+};
+
 export const getMe = async (req: Request, res: Response) => {
   try {
     // req.user is set by the auth middleware

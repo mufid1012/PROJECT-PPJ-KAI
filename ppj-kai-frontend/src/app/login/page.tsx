@@ -71,7 +71,8 @@ export default function LoginPage() {
         {/* Background Image */}
         <div 
           className="absolute inset-0 bg-cover bg-center opacity-80" 
-          style={{ backgroundImage: "url('https://lh3.googleusercontent.com/aida-public/AB6AXuAUUI77ArURzWn3szT5_AVrBX7WqPAuXq9N5iGeE1ZH382Nz2ZQZA_LCumsT0KXq6QDUM1wMPqffZuDLQ0AwhNj3CMhwNrSATkOyH150fMt0uzQ9qKF3_hXJs7uvGHYa2bk6RiQn9Lzm8UWvv-LeeYU1rFw4EHcKCeUYq9hNmHnojdwSR9ft8Np7zD-45qelwtNQ_1ngHCqnbjUfE-GaKhEdNUnmT0CqvMkFxxLj98EqmLX7Xu5EtnGiUqM6V1SrsvRl-4gBzL_FdnD')" }}
+          style={{ backgroundImage: "url('/cc206.png')" }}
+
         />
         {/* Dark Gradient Overlay for text legibility */}
         <div className="absolute inset-0 bg-gradient-to-t from-primary/95 via-primary/60 to-primary/20 mix-blend-multiply"></div>
@@ -85,7 +86,8 @@ export default function LoginPage() {
         </div>
         
         <div className="relative z-10 text-on-primary max-w-lg">
-          <h2 className="font-h1 text-h1 mb-md leading-tight">Infrastructure Monitoring<br/>Excellence.</h2>
+          <h2 className="font-h1 text-h1 mb-md leading-tight">Monitoring Petugas Pemeriksa Jalur<br/>DAOP 6 Yogyakarta.</h2>
+
           <p className="font-body-lg text-body-lg text-primary-fixed-dim">
             Empowering track maintenance divisions with real-time data, predictive analytics, and seamless field reporting to ensure the highest safety standards across the network.
           </p>
@@ -220,7 +222,8 @@ export default function LoginPage() {
                 {isLoading ? 'Memverifikasi...' : 'Secure Login'} <span className="material-symbols-outlined text-[18px]">arrow_forward</span>
               </button>
               <p className="font-body-md text-body-md text-on-surface-variant text-center">
-                Need an account? <Link className="text-primary font-semibold hover:underline" href="#">Register here</Link>
+                Need an account? <Link className="text-primary font-semibold hover:underline" href="/register">Register here</Link>
+
               </p>
             </div>
           </form>
@@ -228,7 +231,8 @@ export default function LoginPage() {
           {/* Footer Info */}
           <div className="mt-xl pt-xl border-t border-surface-container-highest text-center">
             <p className="font-label-sm text-label-sm text-outline">
-              Protected by KAI Internal Security Protocol © 2024
+              Protected by KAI Internal Security Protocol © 2026
+
             </p>
           </div>
         </div>
