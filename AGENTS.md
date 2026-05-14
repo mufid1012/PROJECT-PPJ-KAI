@@ -32,7 +32,7 @@ src/
 ├── config/database.ts          # Prisma client singleton
 ├── middleware/auth.middleware.ts # requireAuth (JWT), requireAdmin (role check)
 ├── controllers/
-│   ├── auth.controller.ts      # login, getMe, checkNipp
+│   ├── auth.controller.ts      # login, getMe, checkNipp, updateProfile
 │   ├── tugas.controller.ts     # getTugasPetugas, getTugasSummary, getTugasById
 │   ├── tracking.controller.ts  # startTracking, stopTracking, updateTracking, getActiveTracking
 │   ├── laporan.controller.ts   # createLaporan, getLaporan
@@ -45,7 +45,7 @@ src/
     └── admin.routes.ts          # /api/admin/* (requireAuth + requireAdmin)
 
 prisma/schema.prisma             # 4 tabel: User, TugasPpj, Tracking, Laporan
-seed-user.ts                     # Seeder: petugas KAI-1234 + 2 tugas sample
+seed-user.ts                     # Seeder: petugas KAI-1234 (profil lengkap) + admin + 2 tugas sample
 .env                             # DATABASE_URL, PORT, JWT_SECRET
 ```
 
@@ -61,6 +61,7 @@ src/
 │   ├── inspeksi/[id]/page.tsx  # ⭐ HALAMAN TERBESAR (~640 baris). Tracking GPS + peta + geofencing + kamera + emergency
 │   ├── inspeksi/[id]/selesai/page.tsx # Halaman ringkasan setelah inspeksi selesai
 │   ├── riwayat/page.tsx        # Riwayat inspeksi petugas
+│   ├── profile/page.tsx        # Halaman profil petugas: info, edit modal, logout
 │   ├── admin/page.tsx          # ⭐ Dashboard admin: sidebar + peta + modal CRUD tugas
 │   └── globals.css             # Design tokens Material Design 3 (warna, spacing, typography)
 ├── components/
@@ -92,6 +93,11 @@ users (User)
 ├── password: String (255, bcrypt hash)
 ├── foto: Text? (base64)
 ├── role: String (20, default "petugas") → "admin" | "petugas"
+├── jabatan: String? (100) — e.g. "Track Inspector"
+├── division: String? (100) — e.g. "DAOP 1 Jakarta"
+├── work_area: String? (100) — e.g. "Sektor 4 (GMR-JAKK)"
+├── phone: String? (30) — e.g. "+62 812-3456-7890"
+├── is_active: Boolean (default true)
 └── 1:N → tugas_ppj
 
 tugas_ppj (TugasPpj)
@@ -133,7 +139,8 @@ laporan (Laporan)
 - `GET /api/auth/check/:nipp` → cek NIPP exists
 
 ### Petugas (requireAuth)
-- `GET /api/auth/me` → user info
+- `GET /api/auth/me` → full user profile (id, nipp, nama, role, foto, jabatan, division, workArea, phone, isActive)
+- `PATCH /api/auth/profile` → `{ nama?, foto?, phone?, password? }` → update profil sendiri (NIPP & role read-only)
 - `GET /api/tugas` → tugas milik petugas yang login
 - `GET /api/tugas/summary` → statistik (total, pending, completed)
 - `GET /api/tugas/:id` → detail satu tugas
@@ -193,6 +200,15 @@ laporan (Laporan)
 - Map container: `isolation: isolate` untuk membuat stacking context terpisah
 - **Jangan turunkan z-index modal di bawah 9999**
 
+### 7. Halaman Profile (`/profile`)
+- Fetch data dari `GET /api/auth/me`, bukan hardcode
+- Edit profile via modal → `PATCH /api/auth/profile`
+- Field editable: `nama`, `foto`, `phone`, `password`
+- NIPP dan role **read-only**, tidak boleh diubah user
+- Foto upload: FileReader → base64, maks 2MB
+- Logout: hapus `token` + `user` dari localStorage → redirect `/login`
+- Setelah save, update juga localStorage agar sync dengan halaman lain
+
 ---
 
 ## Akun Default
@@ -232,6 +248,7 @@ laporan (Laporan)
 cd ppj-kai-backend
 npm install
 npx prisma db push && npx prisma generate
+npx tsx seed-user.ts   # seed data petugas + admin (upsert, aman dijalankan ulang)
 npm run dev    # → localhost:5001
 
 # Terminal 2 — Frontend
@@ -239,6 +256,9 @@ cd ppj-kai-frontend
 npm install
 npm run dev    # → localhost:3000
 ```
+
+> **Setelah perubahan schema Prisma**, jalankan ulang:
+> `npx prisma db push && npx prisma generate && npx tsx seed-user.ts`
 
 ---
 
@@ -253,3 +273,4 @@ npm run dev    # → localhost:3000
 7. Selalu cek `lib/api.ts` untuk base URL dan interceptor sebelum debug API calls
 8. Railway logic ada SEMUA di `lib/railway.ts` — satu file, satu concern
 9. **Jangan duplikasi `petugasColor()`** — sudah ada di AdminMap.tsx dan admin/page.tsx, idealnya dipindah ke utils jika perlu di tempat lain
+10. **Profile page** (`/profile`) — data diambil dari API, bukan hardcode. NIPP dan role selalu read-only di edit modal.
