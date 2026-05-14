@@ -2,7 +2,6 @@
 
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
-import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import api from '../../lib/api';
 
@@ -80,7 +79,7 @@ export default function LoginPage() {
         
         {/* Brand Content */}
         <div className="relative z-10 flex items-center gap-3 text-on-primary">
-          <Image src="/logo-kai.png" alt="Logo KAI" width={48} height={48} className="object-contain drop-shadow-md" />
+          <img src="/logo-kai.png" alt="Logo KAI" className="h-10 w-auto object-contain drop-shadow-md" />
           <h1 className="font-h2 text-h2 font-bold tracking-tight">Petugas Pemeriksa Jalur</h1>
         </div>
         
@@ -110,7 +109,7 @@ export default function LoginPage() {
         <div className="w-full max-w-[420px]">
           {/* Mobile Logo (Visible only on small screens) */}
           <div className="flex lg:hidden items-center gap-3 mb-xl">
-            <Image src="/logo-kai.png" alt="Logo KAI" width={40} height={40} className="object-contain" />
+            <img src="/logo-kai.png" alt="Logo KAI" className="h-10 w-auto object-contain" />
             <h1 className="font-h2 text-h2 font-bold text-primary tracking-tight">RailTrack PPJ</h1>
           </div>
           
