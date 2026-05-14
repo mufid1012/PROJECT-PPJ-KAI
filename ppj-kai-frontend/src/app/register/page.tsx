@@ -58,7 +58,7 @@ export default function RegisterPage() {
           <div className="w-10 h-10 bg-on-primary text-primary rounded-lg flex items-center justify-center shadow-md">
             <span className="material-symbols-outlined" style={{ fontVariationSettings: "'FILL' 1" }}>train</span>
           </div>
-          <h1 className="font-h2 text-h2 font-bold tracking-tight">KAI RailTrack PPJ</h1>
+          <h1 className="font-h2 text-h2 font-bold tracking-tight">Petugas Pemeriksa Jalur</h1>
         </div>
 
         <div className="relative z-10 text-on-primary max-w-lg">
