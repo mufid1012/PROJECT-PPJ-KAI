@@ -14,6 +14,11 @@ model User {
   password  String    @db.VarChar(255)
   foto      String?   @db.Text
   role      String    @default("petugas") @db.VarChar(20) // admin | petugas
+  jabatan   String?   @db.VarChar(100) // e.g. "Track Inspector"
+  division  String?   @db.VarChar(100) // e.g. "DAOP 1 Jakarta"
+  workArea  String?   @map("work_area") @db.VarChar(100) // e.g. "Sektor 4 (GMR-JAKK)"
+  phone     String?   @db.VarChar(30)  // e.g. "+62 812-3456-7890"
+  isActive  Boolean   @default(true) @map("is_active")
   tugasPpj  TugasPpj[]
   createdAt DateTime  @default(now()) @map("created_at")
   updatedAt DateTime  @updatedAt @map("updated_at")

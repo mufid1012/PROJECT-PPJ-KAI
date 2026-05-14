@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
+import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import api from '../../lib/api';
 
@@ -27,7 +28,7 @@ export default function LoginPage() {
     const timer = setTimeout(async () => {
       try {
         setNippStatus('loading');
-        const res = await api.get(`/auth/check/${nipp}`);
+        const res = await api.get(`/auth/check/${nipp.trim()}`);
         if (res.data.exists) {
           setNippStatus('verified');
           setVerifiedUser(res.data.user);
@@ -79,9 +80,7 @@ export default function LoginPage() {
         
         {/* Brand Content */}
         <div className="relative z-10 flex items-center gap-3 text-on-primary">
-          <div className="w-10 h-10 bg-on-primary text-primary rounded-lg flex items-center justify-center shadow-md">
-            <span className="material-symbols-outlined" style={{ fontVariationSettings: "'FILL' 1" }}>train</span>
-          </div>
+          <Image src="/logo-kai.png" alt="Logo KAI" width={48} height={48} className="object-contain drop-shadow-md" />
           <h1 className="font-h2 text-h2 font-bold tracking-tight">KAI RailTrack PPJ</h1>
         </div>
         
@@ -111,9 +110,7 @@ export default function LoginPage() {
         <div className="w-full max-w-[420px]">
           {/* Mobile Logo (Visible only on small screens) */}
           <div className="flex lg:hidden items-center gap-3 mb-xl">
-            <div className="w-10 h-10 bg-primary text-on-primary rounded-lg flex items-center justify-center shadow-sm">
-              <span className="material-symbols-outlined" style={{ fontVariationSettings: "'FILL' 1" }}>train</span>
-            </div>
+            <Image src="/logo-kai.png" alt="Logo KAI" width={40} height={40} className="object-contain" />
             <h1 className="font-h2 text-h2 font-bold text-primary tracking-tight">RailTrack PPJ</h1>
           </div>
           

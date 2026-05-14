@@ -55,29 +55,13 @@ export default function DashboardPage() {
   };
 
   const activeTasks = tasks.filter((t) => t.status !== 'completed');
-  const userInitials = user?.nama?.substring(0, 2).toUpperCase() || 'KAI';
-
-  const handleLogout = () => {
-    localStorage.removeItem('token');
-    localStorage.removeItem('user');
-    router.push('/login');
-  };
 
   return (
     <div className="bg-background text-on-background antialiased pb-24 min-h-screen">
       {/* Header */}
       <header className="flex justify-between items-center w-full px-container-padding h-16 bg-surface/80 backdrop-blur-md shadow-sm top-0 z-50 sticky">
         <h1 className="font-h2 text-h2 font-bold text-primary tracking-tight">RailTrack PPJ</h1>
-        <button
-          onClick={handleLogout}
-          className="flex items-center gap-sm text-on-surface-variant hover:text-error transition-colors"
-          title="Logout"
-        >
-          <div className="w-8 h-8 rounded-full bg-primary-container text-on-primary-container flex items-center justify-center font-bold text-sm">
-            {userInitials}
-          </div>
-          <span className="material-symbols-outlined text-[20px]">logout</span>
-        </button>
+
       </header>
 
       <main className="px-container-padding py-md space-y-lg max-w-2xl mx-auto">

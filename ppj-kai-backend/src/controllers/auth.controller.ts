@@ -37,6 +37,11 @@ export const login = async (req: Request, res: Response) => {
         nama: user.nama,
         role: user.role,
         foto: user.foto,
+        jabatan: user.jabatan,
+        division: user.division,
+        workArea: user.workArea,
+        phone: user.phone,
+        isActive: user.isActive,
       },
     });
   } catch (error) {
@@ -110,6 +115,11 @@ export const getMe = async (req: Request, res: Response) => {
         nama: true,
         role: true,
         foto: true,
+        jabatan: true,
+        division: true,
+        workArea: true,
+        phone: true,
+        isActive: true,
       },
     });
 
@@ -143,6 +153,55 @@ export const checkNipp = async (req: Request, res: Response) => {
     }
   } catch (error) {
     console.error('Check NIPP error:', error);
+    return res.status(500).json({ success: false, message: 'Internal server error' });
+  }
+};
+
+export const updateProfile = async (req: Request, res: Response) => {
+  try {
+    const userId = (req as any).user?.id;
+
+    if (!userId) {
+      return res.status(401).json({ success: false, message: 'Not authenticated' });
+    }
+
+    const { nama, foto, phone, password } = req.body;
+
+    // Build update data — only include fields that were provided
+    const updateData: any = {};
+
+    if (nama !== undefined) updateData.nama = nama;
+    if (foto !== undefined) updateData.foto = foto;
+    if (phone !== undefined) updateData.phone = phone;
+
+    // Hash password if provided
+    if (password) {
+      if (password.length < 6) {
+        return res.status(400).json({ success: false, message: 'Password must be at least 6 characters' });
+      }
+      updateData.password = await bcrypt.hash(password, 10);
+    }
+
+    const updatedUser = await prisma.user.update({
+      where: { id: userId },
+      data: updateData,
+      select: {
+        id: true,
+        nipp: true,
+        nama: true,
+        role: true,
+        foto: true,
+        jabatan: true,
+        division: true,
+        workArea: true,
+        phone: true,
+        isActive: true,
+      },
+    });
+
+    return res.json({ success: true, message: 'Profile updated', user: updatedUser });
+  } catch (error) {
+    console.error('Update Profile error:', error);
     return res.status(500).json({ success: false, message: 'Internal server error' });
   }
 };
