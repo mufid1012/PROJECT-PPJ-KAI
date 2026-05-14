@@ -5,8 +5,9 @@ const prisma = new PrismaClient();
 
 async function main() {
   const hashedPassword = await bcrypt.hash('password123', 10);
+  const hashedAdminPassword = await bcrypt.hash('admin123', 10);
   
-  // Upsert user
+  // Upsert petugas user
   const user = await prisma.user.upsert({
     where: { nipp: 'KAI-1234' },
     update: { password: hashedPassword },
@@ -18,7 +19,21 @@ async function main() {
     }
   });
 
-  console.log('User created:', user);
+  console.log('Petugas created:', user);
+
+  // Upsert admin user
+  const admin = await prisma.user.upsert({
+    where: { nipp: 'ADMIN-001' },
+    update: { password: hashedAdminPassword },
+    create: {
+      nipp: 'ADMIN-001',
+      password: hashedAdminPassword,
+      nama: 'Administrator',
+      role: 'admin'
+    }
+  });
+
+  console.log('Admin created:', admin);
 
   // Create tasks for this user
   const tugas1 = await prisma.tugasPpj.create({
