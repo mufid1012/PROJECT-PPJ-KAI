@@ -116,7 +116,7 @@ export default function AdminPage() {
       {/* Header */}
       <header className="h-14 bg-surface border-b border-outline-variant flex items-center justify-between px-lg shrink-0 z-50">
         <div className="flex items-center gap-sm">
-          <span className="material-symbols-outlined text-primary">train</span>
+          <img src="/logo-kai.png" alt="KAI Logo" className="h-8 w-auto object-contain" />
           <h1 className="font-h3 text-h3 font-bold text-primary">RailTrack Admin</h1>
           <span className="ml-sm px-sm py-0.5 bg-error-container text-on-error-container font-label-sm text-[10px] rounded-full uppercase">Admin</span>
         </div>
