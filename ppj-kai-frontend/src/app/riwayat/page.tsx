@@ -100,9 +100,6 @@ export default function RiwayatPage() {
                     </div>
                   </div>
                 </div>
-                <div className="w-16 h-16 rounded-lg bg-surface-container flex items-center justify-center shrink-0 border border-outline-variant">
-                    <span className="material-symbols-outlined text-primary text-[28px]" style={{ fontVariationSettings: "'FILL' 1" }}>train</span>
-                  </div>
               </Link>
             ))
           )}
