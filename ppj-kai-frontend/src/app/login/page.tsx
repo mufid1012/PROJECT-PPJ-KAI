@@ -2,7 +2,6 @@
 
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
-import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import api from '../../lib/api';
 
@@ -13,10 +12,10 @@ export default function LoginPage() {
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
-  
+
   // Real-time verification state
   const [nippStatus, setNippStatus] = useState<'idle' | 'loading' | 'verified' | 'not_found'>('idle');
-  const [verifiedUser, setVerifiedUser] = useState<{nama: string, role: string} | null>(null);
+  const [verifiedUser, setVerifiedUser] = useState<{ nama: string, role: string } | null>(null);
 
   useEffect(() => {
     if (nipp.length < 5) {
@@ -70,20 +69,20 @@ export default function LoginPage() {
       {/* Left Column: Branding & Illustration (Hidden on Mobile) */}
       <div className="hidden lg:flex lg:w-[45%] relative bg-primary-fixed overflow-hidden flex-col justify-between p-xl">
         {/* Background Image */}
-        <div 
-          className="absolute inset-0 bg-cover bg-center opacity-80" 
+        <div
+          className="absolute inset-0 bg-cover bg-center opacity-80"
           style={{ backgroundImage: "url('/cc206.png')" }}
 
         />
         {/* Dark Gradient Overlay for text legibility */}
         <div className="absolute inset-0 bg-gradient-to-t from-primary/95 via-primary/60 to-primary/20 mix-blend-multiply"></div>
-        
+
         {/* Brand Content */}
         <div className="relative z-10 flex items-center gap-3 text-on-primary">
-          <Image src="/logo-kai.png" alt="Logo KAI" width={48} height={48} className="object-contain drop-shadow-md" />
+          <img src="/logo-kai.png" alt="Logo KAI" className="h-10 w-auto object-contain drop-shadow-md" />
           <h1 className="font-h2 text-h2 font-bold tracking-tight">Petugas Pemeriksa Jalur</h1>
         </div>
-        
+
         <div className="relative z-10 text-on-primary max-w-lg">
           <h2 className="font-h2 text-h2 mb-md leading-tight">Monitoring Petugas Pemeriksa Jalur<br/>DAOP 6 Yogyakarta.</h2>
 
@@ -107,16 +106,16 @@ export default function LoginPage() {
         <div className="w-full max-w-[420px]">
           {/* Mobile Logo (Visible only on small screens) */}
           <div className="flex lg:hidden items-center gap-3 mb-xl">
-            <Image src="/logo-kai.png" alt="Logo KAI" width={40} height={40} className="object-contain" />
-            <h1 className="font-h2 text-h2 font-bold text-primary tracking-tight">RailTrack PPJ</h1>
+            <img src="/logo-kai.png" alt="Logo KAI" className="h-10 w-auto object-contain" />
+            <h1 className="font-h2 text-h2 font-bold text-primary tracking-tight">Petugas Pemeriksa Jalur</h1>
           </div>
-          
+
           {/* Page Header */}
           <div className="mb-lg">
             <h2 className="font-h1 text-h1 text-on-surface mb-2">Akses Portal</h2>
             <p className="font-body-md text-body-md text-on-surface-variant">Silakan masuk menggunakan akun yang telah terdaftar.</p>
           </div>
-          
+
           {/* Login Form */}
           <form className="flex flex-col gap-lg" onSubmit={handleLogin}>
             {error && (
@@ -124,7 +123,7 @@ export default function LoginPage() {
                 {error}
               </div>
             )}
-            
+
             {/* NIPP Input */}
             <div className="flex flex-col gap-2">
               <label className="font-label-sm text-label-sm text-on-surface" htmlFor="nipp">NIPP (Employee ID)</label>
@@ -179,7 +178,7 @@ export default function LoginPage() {
                 </div>
               </div>
             )}
-            
+
             {/* Password Input */}
             <div className="flex flex-col gap-2">
               <div className="flex justify-between items-center">
@@ -196,8 +195,8 @@ export default function LoginPage() {
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                 />
-                <button 
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-outline hover:text-on-surface transition-colors focus:outline-none" 
+                <button
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-outline hover:text-on-surface transition-colors focus:outline-none"
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
                 >
@@ -205,11 +204,11 @@ export default function LoginPage() {
                 </button>
               </div>
             </div>
-            
+
             {/* Actions */}
             <div className="mt-2 flex flex-col gap-4">
-              <button 
-                className="w-full h-12 bg-primary text-on-primary rounded-xl font-label-sm text-label-sm shadow-[0px_8px_24px_rgba(0,91,172,0.15)] hover:bg-surface-tint active:scale-[0.98] transition-all flex items-center justify-center gap-2 uppercase tracking-wider disabled:opacity-70 disabled:cursor-not-allowed" 
+              <button
+                className="w-full h-12 bg-primary text-on-primary rounded-xl font-label-sm text-label-sm shadow-[0px_8px_24px_rgba(0,91,172,0.15)] hover:bg-surface-tint active:scale-[0.98] transition-all flex items-center justify-center gap-2 uppercase tracking-wider disabled:opacity-70 disabled:cursor-not-allowed"
                 type="submit"
                 disabled={isLoading}
               >
@@ -221,7 +220,7 @@ export default function LoginPage() {
               </p>
             </div>
           </form>
-          
+
           {/* Footer Info */}
           <div className="mt-xl pt-xl border-t border-surface-container-highest text-center">
             <p className="font-label-sm text-label-sm text-outline">

@@ -139,18 +139,8 @@ export default function ProfilePage() {
   return (
     <div className="bg-background text-on-background antialiased min-h-screen font-sans">
       {/* Top App Bar */}
-      <header className="bg-surface/80 backdrop-blur-md shadow-sm sticky top-0 z-50 flex justify-between items-center w-full px-4 h-16">
-        <button className="text-on-surface-variant hover:bg-surface-container-high transition-colors active:scale-95 duration-150 p-2 rounded-full flex items-center justify-center">
-          <span className="material-symbols-outlined">menu</span>
-        </button>
-        <h1 className="font-semibold text-xl text-primary">RailTrack PPJ</h1>
-        <button className="rounded-full overflow-hidden w-8 h-8 flex items-center justify-center border border-surface-variant bg-primary-container">
-          {user?.foto ? (
-            <img alt="Avatar" className="w-full h-full object-cover" src={user.foto} />
-          ) : (
-            <span className="text-xs font-bold text-on-primary-container">{userInitials}</span>
-          )}
-        </button>
+      <header className="bg-surface/80 backdrop-blur-md shadow-sm sticky top-0 z-50 flex items-center justify-center w-full px-container-padding h-16">
+        <h1 className="font-h2 text-h2 font-bold text-primary tracking-tight">Profil</h1>
       </header>
 
       {/* Main Content */}

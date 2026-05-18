@@ -59,9 +59,8 @@ export default function DashboardPage() {
   return (
     <div className="bg-background text-on-background antialiased pb-24 min-h-screen">
       {/* Header */}
-      <header className="flex justify-between items-center w-full px-container-padding h-16 bg-surface/80 backdrop-blur-md shadow-sm top-0 z-50 sticky">
-        <h1 className="font-h2 text-h2 font-bold text-primary tracking-tight">RailTrack PPJ</h1>
-
+      <header className="bg-surface/80 backdrop-blur-md shadow-sm sticky top-0 z-50 flex items-center justify-center w-full px-container-padding h-16">
+        <h1 className="font-h2 text-h2 font-bold text-primary tracking-tight">Dashboard</h1>
       </header>
 
       <main className="px-container-padding py-md space-y-lg max-w-2xl mx-auto">

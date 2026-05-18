@@ -3,6 +3,7 @@
 import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
 import api from '../../lib/api';
+import BottomNav from '../../components/layout/BottomNav';
 
 interface Tugas {
   id: number;
@@ -39,7 +40,7 @@ export default function RiwayatPage() {
   return (
     <div className="bg-background text-on-background min-h-screen flex flex-col font-body-lg antialiased">
       {/* Header */}
-      <header className="bg-surface/80 backdrop-blur-md shadow-sm top-0 z-50 sticky flex items-center w-full px-container-padding h-16">
+      <header className="bg-surface/80 backdrop-blur-md shadow-sm sticky top-0 z-50 flex items-center justify-center w-full px-container-padding h-16">
         <h1 className="font-h2 text-h2 font-bold text-primary tracking-tight">Riwayat Inspeksi</h1>
       </header>
 
@@ -108,25 +109,7 @@ export default function RiwayatPage() {
         </section>
       </main>
 
-      {/* Bottom Nav */}
-      <nav className="bg-surface/80 backdrop-blur-md text-primary font-label-sm text-label-sm fixed bottom-0 w-full z-50 pb-safe shadow-[0px_-4px_20px_rgba(0,0,0,0.05)] flex justify-around items-center h-20 px-2">
-        <Link href="/dashboard" className="flex flex-col items-center justify-center text-on-surface-variant px-4 py-1.5 hover:bg-surface-container-low transition-transform duration-200 active:scale-90">
-          <span className="material-symbols-outlined mb-1">dashboard</span>
-          <span>Home</span>
-        </Link>
-        <Link href="/inspeksi/1" className="flex flex-col items-center justify-center text-on-surface-variant px-4 py-1.5 hover:bg-surface-container-low transition-transform duration-200 active:scale-90">
-          <span className="material-symbols-outlined mb-1">map</span>
-          <span>Track</span>
-        </Link>
-        <Link href="/riwayat" className="flex flex-col items-center justify-center bg-primary-container text-on-primary-container rounded-xl px-4 py-1.5 transition-transform duration-200 active:scale-90 shadow-sm">
-          <span className="material-symbols-outlined mb-1" style={{ fontVariationSettings: "'FILL' 1" }}>history</span>
-          <span>History</span>
-        </Link>
-        <Link href="/profile" className="flex flex-col items-center justify-center text-on-surface-variant px-4 py-1.5 hover:bg-surface-container-low transition-transform duration-200 active:scale-90">
-          <span className="material-symbols-outlined mb-1">person</span>
-          <span>Profile</span>
-        </Link>
-      </nav>
+      <BottomNav />
     </div>
   );
 }
