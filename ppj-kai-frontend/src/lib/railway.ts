@@ -93,6 +93,45 @@ function dijkstra(graph: Graph, startId: NodeId, endId: NodeId): [number, number
   return path.length >= 2 ? path : null;
 }
 
+// Multiple Overpass API endpoints for failover
+const OVERPASS_ENDPOINTS = [
+  'https://overpass-api.de/api/interpreter',
+  'https://overpass.kumi.systems/api/interpreter',
+  'https://maps.mail.ru/osm/tools/overpass/api/interpreter',
+];
+
+/**
+ * Fetch from Overpass API with automatic failover to mirror endpoints.
+ */
+async function fetchOverpass(query: string): Promise<any> {
+  for (const endpoint of OVERPASS_ENDPOINTS) {
+    try {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 15000);
+      
+      const res = await fetch(endpoint, {
+        method: 'POST',
+        body: query,
+        headers: { 'Content-Type': 'text/plain' },
+        signal: controller.signal,
+      });
+      clearTimeout(timeoutId);
+
+      if (!res.ok) {
+        console.warn(`Overpass ${endpoint} returned ${res.status}, trying next...`);
+        continue;
+      }
+
+      const data = await res.json();
+      return data;
+    } catch (err) {
+      console.warn(`Overpass ${endpoint} failed:`, err);
+      continue;
+    }
+  }
+  throw new Error('All Overpass API endpoints failed');
+}
+
 /**
  * Fetches real railway geometry from OSM via Overpass API and returns
  * the shortest path along the actual tracks from startPoint to endPoint.
@@ -107,24 +146,23 @@ export async function fetchRailwayGeometry(
   const minLng = Math.min(startLng, endLng);
   const maxLng = Math.max(startLng, endLng);
 
-  const latPad = Math.max((maxLat - minLat) * 0.15, 0.01);
-  const lngPad = Math.max((maxLng - minLng) * 0.15, 0.01);
+  // Generous padding to capture nearby tracks
+  const latPad = Math.max((maxLat - minLat) * 0.3, 0.02);
+  const lngPad = Math.max((maxLng - minLng) * 0.3, 0.02);
   const bbox = `${(minLat - latPad).toFixed(6)},${(minLng - lngPad).toFixed(6)},${(maxLat + latPad).toFixed(6)},${(maxLng + lngPad).toFixed(6)}`;
 
-  const query = `[out:json][timeout:30];
+  const query = `[out:json][timeout:25];
 way[railway~"^(rail|light_rail|subway|tram|narrow_gauge|monorail)$"](${bbox});
 out geom;`;
 
   try {
-    const res = await fetch('https://overpass-api.de/api/interpreter', {
-      method: 'POST',
-      body: query,
-      headers: { 'Content-Type': 'text/plain' },
-    });
-    const data = await res.json();
+    const data = await fetchOverpass(query);
     const elements = data.elements || [];
 
-    if (elements.length === 0) return [];
+    if (elements.length === 0) {
+      console.warn('No railway elements found in bbox:', bbox);
+      return [];
+    }
 
     const graph = buildGraph(elements);
     if (graph.coords.size === 0) return [];
@@ -139,7 +177,62 @@ out geom;`;
 
     // If pathfinding fails, return nothing (fallback to straight line in caller)
     return [];
-  } catch {
+  } catch (err) {
+    console.error('fetchRailwayGeometry error:', err);
     return [];
+  }
+}
+
+/**
+ * Snap a coordinate to the nearest railway track.
+ * Used by AdminMap for pick-mode point placement.
+ */
+export async function snapToRailwayPoint(
+  lat: number, lng: number
+): Promise<{ lat: number; lng: number; name: string } | null> {
+  const RADIUS = 1000;
+  const query = `[out:json][timeout:10];
+(
+  way(around:${RADIUS},${lat},${lng})[railway~"^(rail|light_rail|subway|tram|narrow_gauge|monorail)$"];
+  node(around:${RADIUS},${lat},${lng})[railway="station"];
+  node(around:${RADIUS},${lat},${lng})[railway="halt"];
+);
+out geom;`;
+
+  try {
+    const data = await fetchOverpass(query);
+
+    if (!data.elements || data.elements.length === 0) return null;
+
+    let minDist = Infinity;
+    let nearest: { lat: number; lng: number; name: string } | null = null;
+
+    for (const el of data.elements) {
+      const tags = el.tags || {};
+      const name = tags.name || tags['name:id'] || tags.ref || 'Jalur Rel';
+
+      if (el.type === 'way' && el.geometry) {
+        for (const node of el.geometry) {
+          const d = haversineM(lat, lng, node.lat, node.lon);
+          if (d < minDist) {
+            minDist = d;
+            nearest = { lat: node.lat, lng: node.lon, name };
+          }
+        }
+      }
+
+      if (el.type === 'node' && el.lat != null) {
+        const d = haversineM(lat, lng, el.lat, el.lon);
+        if (d < minDist) {
+          minDist = d;
+          nearest = { lat: el.lat, lng: el.lon, name };
+        }
+      }
+    }
+
+    return nearest;
+  } catch (err) {
+    console.error('snapToRailwayPoint error:', err);
+    return null;
   }
 }

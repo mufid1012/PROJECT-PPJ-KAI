@@ -55,13 +55,14 @@ seed-user.ts                     # Seeder: admin PERTAMA, lalu petugas KAI-1234 
 src/
 ├── app/
 │   ├── layout.tsx              # Root layout, Google Fonts (Outfit), Material Symbols
-│   ├── page.tsx                # Landing/splash → redirect ke /login atau /dashboard
+│   ├── page.tsx                # Landing/splash → redirect ke /login
 │   ├── login/page.tsx          # Login form (NIPP + password)
-│   ├── dashboard/page.tsx      # Dashboard petugas: task list, stats, bottom nav
+│   ├── dashboard/page.tsx      # Dashboard petugas: task list, stats, header "Dashboard"
+│   ├── inspeksi/page.tsx       # ⭐ Task selector: empty state / pilih tugas, header "Lacak"
 │   ├── inspeksi/[id]/page.tsx  # ⭐ HALAMAN TERBESAR (~640 baris). Tracking GPS + peta + geofencing + kamera + emergency
 │   ├── inspeksi/[id]/selesai/page.tsx # Halaman ringkasan setelah inspeksi selesai
-│   ├── riwayat/page.tsx        # Riwayat inspeksi petugas
-│   ├── profile/page.tsx        # Halaman profil petugas: info, edit modal, logout
+│   ├── riwayat/page.tsx        # Riwayat inspeksi petugas, header "Riwayat Inspeksi"
+│   ├── profile/page.tsx        # Halaman profil petugas: info, edit modal, logout, header "Profil"
 │   ├── admin/page.tsx          # ⭐ Dashboard admin: sidebar + peta + modal CRUD tugas
 │   └── globals.css             # Design tokens Material Design 3 (warna, spacing, typography)
 ├── components/
@@ -72,10 +73,10 @@ src/
 │   │   ├── AuthGuard.tsx       # Redirect ke /login jika belum auth
 │   │   └── OfflineSyncProvider.tsx # PWA offline queue
 │   └── layout/
-│       └── BottomNav.tsx       # Bottom navigation bar (tidak dipakai, inline di tiap page)
+│       └── BottomNav.tsx       # ⭐ Shared bottom navigation bar (dipakai di semua halaman petugas)
 ├── lib/
 │   ├── api.ts                  # Axios instance, base URL localhost:5001/api, auto-attach JWT
-│   ├── railway.ts              # ⭐ Overpass API fetch + Dijkstra pathfinding untuk geometri rel
+│   ├── railway.ts              # ⭐ Overpass API fetch (3 endpoint failover) + Dijkstra pathfinding + snapToRailwayPoint
 │   └── utils.ts                # cn() helper (clsx + tailwind-merge)
 └── hooks/
     └── useOfflineSync.ts       # Hook untuk offline data queue
@@ -178,38 +179,71 @@ laporan (Laporan)
 - Jalankan Dijkstra shortest path dari node terdekat A ke B
 - Return path sebagai `[number, number][]` untuk polyline
 - Dipakai di DynamicMap (petugas) dan AdminMap (admin)
+- **3 endpoint failover otomatis**: `overpass-api.de` → `overpass.kumi.systems` → `maps.mail.ru`
+- Jika endpoint pertama gagal/timeout → otomatis coba mirror berikutnya
+- AbortController timeout 15 detik per request
+- `fetchRailwayGeometry()` — untuk route polyline antar 2 titik
+- `snapToRailwayPoint()` — untuk snap koordinat klik ke rel terdekat (radius 1000m)
 
 ### 2. Railway Snap (AdminMap)
-- Saat admin klik peta dalam pick mode → query Overpass radius 300m
-- Cari node/way dengan tag `railway` terdekat
+- Saat admin klik peta dalam pick mode → `snapToRailwayPoint()` dari `railway.ts`
+- Cari node/way dengan tag `railway` terdekat dalam radius **1000 meter**
 - Snap koordinat ke titik di rel, return nama rel dari OSM tags
-- Tolak klik yang tidak dekat rel
+- **Fallback**: jika Overpass API gagal total → gunakan koordinat raw dengan nama "Titik Manual"
+- Tidak pernah block user — selalu bisa menempatkan titik
 
-### 3. Geofencing
+### 3. Geometry Cache (AdminMap)
+- Railway geometry di-cache dalam `useRef<Map>` keyed by koordinat start-end
+- Polling 15 detik TIDAK trigger ulang Overpass API — pakai cache
+- **Hanya cache hasil non-empty** — jika fetch gagal (return `[]`), akan retry di render berikutnya
+- Cache persist selama komponen mounted
+
+### 4. Task Selection Flow (`/inspeksi`)
+- Petugas klik "Track" di bottom nav → masuk `/inspeksi` (task selector)
+- **0 tugas aktif** → tampilkan empty state "Belum Ada Tugas" dengan pesan informatif
+- **Ada tugas `in_progress`** → auto-redirect ke `/inspeksi/:id`
+- **Ada tugas `pending`** → tampilkan daftar pilihan tugas (jalur, jarak, tanggal)
+- Filter: hanya tampilkan `pending` dan `in_progress` (completed/cancelled masuk riwayat)
+
+### 5. BottomNav Shared Component
+- Komponen `BottomNav.tsx` dipakai di SEMUA halaman petugas (dashboard, inspeksi, riwayat, profile)
+- **Jangan inline bottom nav** — selalu pakai `<BottomNav />`
+- Track link mengarah ke `/inspeksi` (task selector), BUKAN langsung ke `/inspeksi/:id`
+- Tampil di semua ukuran layar (mobile + desktop) — **tidak ada `md:hidden`**
+- Active state berdasarkan `usePathname()` match
+
+### 6. Header Konsisten
+- Semua halaman petugas menggunakan header centered dengan style yang sama:
+  - `bg-surface/80 backdrop-blur-md shadow-sm sticky top-0 z-50 flex items-center justify-center`
+  - Font: `font-h2 text-h2 font-bold text-primary tracking-tight`
+- Mapping: Dashboard → "Dashboard", Track → "Lacak", History → "Riwayat Inspeksi", Profile → "Profil"
+- **Jangan tambah tombol/avatar di header** — hanya teks centered
+
+### 7. Geofencing
 - Radius: **500 meter** (konstanta `GEOFENCE_RADIUS` di `inspeksi/[id]/page.tsx`)
 - Haversine distance antara GPS user dan `startPointLat/Long` tugas
 - Tombol start disabled sampai user masuk radius
 - **Mode Testing**: toggle di localhost yang bypass geofencing
 
-### 4. Session Persistence
+### 8. Session Persistence
 - Saat start tracking → simpan `{ trackingId, startedAt, trackPath }` ke `localStorage`
 - Saat GPS update → update `trackPath` di localStorage (setiap 5 titik)
 - Saat reload → cek `tugas.status === 'in_progress'` → GET `/tracking/active/:id` → restore
 - **Backend `startTime` adalah sumber kebenaran untuk timer**, bukan localStorage
 - Saat stop → `localStorage.removeItem()`
 
-### 5. Warna Per Petugas
+### 9. Warna Per Petugas
 - Hash deterministik dari NIPP → HSL hue (golden angle × 137°)
 - Fungsi `petugasColor(nipp)` ada di `AdminMap.tsx` dan `admin/page.tsx`
 - Sama NIPP = sama warna, selalu konsisten
 
-### 6. Z-Index Strategy (Leaflet vs Modal)
+### 10. Z-Index Strategy (Leaflet vs Modal)
 - Leaflet internal layers: z-index 200–700
 - Modal overlay: `z-[9999]`
 - Map container: `isolation: isolate` untuk membuat stacking context terpisah
 - **Jangan turunkan z-index modal di bawah 9999**
 
-### 7. Halaman Profile (`/profile`)
+### 11. Halaman Profile (`/profile`)
 - Fetch data dari `GET /api/auth/me`, bukan hardcode
 - Edit profile via modal → `PATCH /api/auth/profile`
 - Field editable: `nama`, `foto`, `phone`, `password`
@@ -280,8 +314,12 @@ npm run dev    # → localhost:3000
 5. **Prisma schema** = sumber kebenaran untuk struktur database
 6. **`globals.css`** = semua design tokens (warna, spacing, typography, font sizes)
 7. Selalu cek `lib/api.ts` untuk base URL dan interceptor sebelum debug API calls
-8. Railway logic ada SEMUA di `lib/railway.ts` — satu file, satu concern
+8. Railway logic ada SEMUA di `lib/railway.ts` — satu file, satu concern. Termasuk `fetchRailwayGeometry()` dan `snapToRailwayPoint()`.
 9. **Jangan duplikasi `petugasColor()`** — sudah ada di AdminMap.tsx dan admin/page.tsx, idealnya dipindah ke utils jika perlu di tempat lain
 10. **Profile page** (`/profile`) — data diambil dari API, bukan hardcode. NIPP dan role selalu read-only di edit modal.
 11. **managerId pattern** — Semua data admin di-scope via `managerId`. Seeder HARUS buat admin dulu, lalu petugas dengan `managerId: admin.id`. Tanpa ini, dashboard admin kosong total.
 12. **JWT payload** hanya berisi `{ id, role }` — TIDAK ada `nipp`. Jangan akses `req.user.nipp` dari JWT decoded.
+13. **BottomNav** — Selalu pakai komponen `<BottomNav />` dari `components/layout/BottomNav.tsx`. JANGAN inline bottom nav di halaman.
+14. **Header halaman petugas** — Selalu centered, hanya teks, style seragam. Lihat bagian "Header Konsisten" di atas.
+15. **Overpass API** — JANGAN hardcode 1 endpoint. Selalu pakai `fetchOverpass()` dari `railway.ts` yang punya failover 3 mirror.
+16. **Geometry cache** — AdminMap cache geometry di `useRef`. Jangan cache hasil kosong agar bisa retry.

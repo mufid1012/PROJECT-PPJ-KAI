@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from 'react';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
-import { fetchRailwayGeometry } from '../../lib/railway';
+import { fetchRailwayGeometry, snapToRailwayPoint } from '../../lib/railway';
 
 interface EmergencyPoint {
   id: number;
@@ -77,66 +77,8 @@ function makePin(color: string, label: string) {
   });
 }
 
-function haversineM(lat1: number, lng1: number, lat2: number, lng2: number) {
-  const R = 6371000;
-  const dLat = (lat2 - lat1) * Math.PI / 180;
-  const dLng = (lng2 - lng1) * Math.PI / 180;
-  const a = Math.sin(dLat / 2) ** 2 + Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * Math.sin(dLng / 2) ** 2;
-  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-}
-
-// Query Overpass API for nearest railway geometry
-async function snapToRailway(lat: number, lng: number): Promise<{ lat: number; lng: number; name: string } | null> {
-  const RADIUS = 300; // meters
-  const query = `[out:json][timeout:15];
-(
-  way(around:${RADIUS},${lat},${lng})[railway~"^(rail|light_rail|subway|tram|narrow_gauge|monorail)$"];
-  node(around:${RADIUS},${lat},${lng})[railway="station"];
-  node(around:${RADIUS},${lat},${lng})[railway="halt"];
-);
-out geom;`;
-
-  try {
-    const res = await fetch('https://overpass-api.de/api/interpreter', {
-      method: 'POST',
-      body: query,
-      headers: { 'Content-Type': 'text/plain' },
-    });
-    const data = await res.json();
-
-    if (!data.elements || data.elements.length === 0) return null;
-
-    let minDist = Infinity;
-    let nearest: { lat: number; lng: number; name: string } | null = null;
-
-    for (const el of data.elements) {
-      const tags = el.tags || {};
-      const name = tags.name || tags['name:id'] || tags.ref || 'Jalur Rel';
-
-      if (el.type === 'way' && el.geometry) {
-        for (const node of el.geometry) {
-          const d = haversineM(lat, lng, node.lat, node.lon);
-          if (d < minDist) {
-            minDist = d;
-            nearest = { lat: node.lat, lng: node.lon, name };
-          }
-        }
-      }
-
-      if (el.type === 'node' && el.lat != null) {
-        const d = haversineM(lat, lng, el.lat, el.lon);
-        if (d < minDist) {
-          minDist = d;
-          nearest = { lat: el.lat, lng: el.lon, name };
-        }
-      }
-    }
-
-    return nearest;
-  } catch {
-    return null;
-  }
-}
+// snapToRailway and fetchRailwayGeometry are imported from lib/railway.ts
+// which has automatic failover to multiple Overpass API mirrors
 
 export default function AdminMap({ emergencies, tasks, onEmergencyClick, onMapClick, pickMode, tempStart, tempEnd }: AdminMapProps) {
   const containerRef = useRef<HTMLDivElement>(null);
@@ -168,17 +110,22 @@ export default function AdminMap({ emergencies, tasks, onEmergencyClick, onMapCl
       setSnapping(true);
       map.getContainer().style.cursor = 'wait';
 
-      const snapped = await snapToRailway(e.latlng.lat, e.latlng.lng);
-      setSnapping(false);
-      map.getContainer().style.cursor = pickMode ? 'crosshair' : '';
+      try {
+        const snapped = await snapToRailwayPoint(e.latlng.lat, e.latlng.lng);
 
-      if (!snapped) {
-        setSnapError('Titik yang dipilih tidak berada di dekat jalur rel kereta api. Coba klik lebih dekat ke rel.');
-        setTimeout(() => setSnapError(null), 4000);
-        return;
+        if (snapped) {
+          onMapClick(snapped.lat, snapped.lng, snapped.name);
+        } else {
+          // Fallback to raw coordinates
+          onMapClick(e.latlng.lat, e.latlng.lng, 'Titik Manual');
+        }
+      } catch (err) {
+        console.error('Map click snap error:', err);
+        onMapClick(e.latlng.lat, e.latlng.lng, 'Titik Manual');
+      } finally {
+        setSnapping(false);
+        map.getContainer().style.cursor = pickMode ? 'crosshair' : '';
       }
-
-      onMapClick(snapped.lat, snapped.lng, snapped.name);
     };
 
     map.on('click', handleClick);
@@ -190,6 +137,9 @@ export default function AdminMap({ emergencies, tasks, onEmergencyClick, onMapCl
     if (!mapRef.current || snapping) return;
     mapRef.current.getContainer().style.cursor = pickMode ? 'crosshair' : '';
   }, [pickMode, snapping]);
+
+  // Geometry cache — persists across re-renders, keyed by task coordinates
+  const geometryCacheRef = useRef<Map<string, [number, number][][]>>(new Map());
 
   // Draw task routes + emergency markers
   useEffect(() => {
@@ -216,11 +166,11 @@ export default function AdminMap({ emergencies, tasks, onEmergencyClick, onMapCl
         .bindTooltip(`<b>${task.endPointName || 'Akhir'}</b>`)
         .addTo(layer);
 
-      // Fetch real railway geometry async
-      fetchRailwayGeometry(
-        task.startPointLat, task.startPointLong,
-        task.endPointLat, task.endPointLong
-      ).then(segments => {
+      // Cache key based on start/end coordinates
+      const cacheKey = `${task.startPointLat},${task.startPointLong}-${task.endPointLat},${task.endPointLong}`;
+      const cached = geometryCacheRef.current.get(cacheKey);
+
+      const drawRoute = (segments: [number, number][][]) => {
         if (!layerGroupRef.current) return;
         if (segments.length > 0) {
           segments.forEach(seg => {
@@ -232,7 +182,23 @@ export default function AdminMap({ emergencies, tasks, onEmergencyClick, onMapCl
             { color, weight: 4, dashArray: '10,7', opacity: opacity * 0.6 }
           ).addTo(layerGroupRef.current!);
         }
-      });
+      };
+
+      if (cached) {
+        // Use cached geometry — no API call
+        drawRoute(cached);
+      } else {
+        // Fetch and cache (only cache non-empty results)
+        fetchRailwayGeometry(
+          task.startPointLat, task.startPointLong,
+          task.endPointLat, task.endPointLong
+        ).then(segments => {
+          if (segments.length > 0) {
+            geometryCacheRef.current.set(cacheKey, segments);
+          }
+          drawRoute(segments);
+        });
+      }
     });
 
     emergencies.forEach(em => {
