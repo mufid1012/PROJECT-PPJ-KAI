@@ -21,7 +21,7 @@ export default function RegisterPage() {
     setError('');
 
     if (password !== confirmPassword) {
-      setError('Password and Confirm Password do not match');
+      setError('Password dan Konfirmasi Password tidak cocok');
       setIsLoading(false);
       return;
     }
@@ -62,7 +62,7 @@ export default function RegisterPage() {
         <div className="relative z-10 text-on-primary max-w-lg">
           <h2 className="font-h1 text-h1 mb-md leading-tight">Gabunglah bersama kami Menjadi<br />Petugas Pemeriksa Jalur.</h2>
           <p className="font-body-lg text-body-lg text-primary-fixed-dim">
-            Register your account to access real-time data, predictive analytics, and seamless field reporting tools.
+            Daftarkan akun Anda untuk mengakses data real-time, analitik prediktif, dan pelaporan lapangan yang mudah.
           </p>
         </div>
       </div>
@@ -78,8 +78,8 @@ export default function RegisterPage() {
 
           {/* Page Header */}
           <div className="mb-lg">
-            <h2 className="font-h1 text-h1 text-on-surface mb-2">Create Account</h2>
-            <p className="font-body-md text-body-md text-on-surface-variant">Fill in the details below to register.</p>
+            <h2 className="font-h1 text-h1 text-on-surface mb-2">Buat Akun</h2>
+            <p className="font-body-md text-body-md text-on-surface-variant">Isi data di bawah ini untuk mendaftar.</p>
           </div>
 
           {/* Register Form */}
@@ -92,13 +92,13 @@ export default function RegisterPage() {
 
             {/* NIPP Input */}
             <div className="flex flex-col gap-2">
-              <label className="font-label-sm text-label-sm text-on-surface" htmlFor="nipp">NIPP (Employee ID)</label>
+              <label className="font-label-sm text-label-sm text-on-surface" htmlFor="nipp">NIPP (ID Karyawan)</label>
               <div className="relative group">
                 <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-outline group-focus-within:text-primary transition-colors">badge</span>
                 <input
                   className="w-full pl-10 pr-4 py-3 bg-surface-container-lowest border border-outline-variant rounded-lg focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-all font-body-lg text-body-lg text-on-surface placeholder:text-outline shadow-sm"
                   id="nipp"
-                  placeholder="Enter your NIPP"
+                  placeholder="Masukkan NIPP Anda"
                   type="text"
                   value={nipp}
                   onChange={(e) => setNipp(e.target.value)}
@@ -109,13 +109,13 @@ export default function RegisterPage() {
 
             {/* Nama Input */}
             <div className="flex flex-col gap-2">
-              <label className="font-label-sm text-label-sm text-on-surface" htmlFor="nama">Full Name</label>
+              <label className="font-label-sm text-label-sm text-on-surface" htmlFor="nama">Nama Lengkap</label>
               <div className="relative group">
                 <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-outline group-focus-within:text-primary transition-colors">person</span>
                 <input
                   className="w-full pl-10 pr-4 py-3 bg-surface-container-lowest border border-outline-variant rounded-lg focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-all font-body-lg text-body-lg text-on-surface placeholder:text-outline shadow-sm"
                   id="nama"
-                  placeholder="Enter your full name"
+                  placeholder="Masukkan nama lengkap Anda"
                   type="text"
                   value={nama}
                   onChange={(e) => setNama(e.target.value)}
@@ -126,13 +126,13 @@ export default function RegisterPage() {
 
             {/* Password Input */}
             <div className="flex flex-col gap-2">
-              <label className="font-label-sm text-label-sm text-on-surface" htmlFor="password">Password</label>
+              <label className="font-label-sm text-label-sm text-on-surface" htmlFor="password">Kata Sandi</label>
               <div className="relative group">
                 <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-outline group-focus-within:text-primary transition-colors">lock</span>
                 <input
                   className="w-full pl-10 pr-10 py-3 bg-surface-container-lowest border border-outline-variant rounded-lg focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-all font-body-lg text-body-lg text-on-surface shadow-sm"
                   id="password"
-                  placeholder="Create password"
+                  placeholder="Buat kata sandi"
                   type={showPassword ? "text" : "password"}
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
@@ -150,13 +150,13 @@ export default function RegisterPage() {
 
             {/* Confirm Password Input */}
             <div className="flex flex-col gap-2">
-              <label className="font-label-sm text-label-sm text-on-surface" htmlFor="confirmPassword">Confirm Password</label>
+              <label className="font-label-sm text-label-sm text-on-surface" htmlFor="confirmPassword">Konfirmasi Kata Sandi</label>
               <div className="relative group">
                 <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-outline group-focus-within:text-primary transition-colors">lock_clock</span>
                 <input
                   className="w-full pl-10 pr-10 py-3 bg-surface-container-lowest border border-outline-variant rounded-lg focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-all font-body-lg text-body-lg text-on-surface shadow-sm"
                   id="confirmPassword"
-                  placeholder="Confirm your password"
+                  placeholder="Konfirmasi kata sandi Anda"
                   type={showPassword ? "text" : "password"}
                   value={confirmPassword}
                   onChange={(e) => setConfirmPassword(e.target.value)}
@@ -172,10 +172,10 @@ export default function RegisterPage() {
                 type="submit"
                 disabled={isLoading}
               >
-                {isLoading ? 'Creating Account...' : 'Register'} <span className="material-symbols-outlined text-[18px]">person_add</span>
+                {isLoading ? 'Membuat Akun...' : 'Daftar'} <span className="material-symbols-outlined text-[18px]">person_add</span>
               </button>
               <p className="font-body-md text-body-md text-on-surface-variant text-center">
-                Already have an account? <Link className="text-primary font-semibold hover:underline" href="/login">Login here</Link>
+                Sudah punya akun? <Link className="text-primary font-semibold hover:underline" href="/login">Masuk di sini</Link>
               </p>
             </div>
           </form>
@@ -183,7 +183,7 @@ export default function RegisterPage() {
           {/* Footer Info */}
           <div className="mt-xl pt-xl border-t border-surface-container-highest text-center">
             <p className="font-label-sm text-label-sm text-outline">
-              Protected by KAI Internal Security Protocol © 2026
+              Dilindungi oleh Protokol Keamanan Internal KAI © 2026
             </p>
           </div>
         </div>
