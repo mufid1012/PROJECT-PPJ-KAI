@@ -61,6 +61,14 @@ export default function TrackingPage({ params }: { params: { id: string } }) {
   // Card minimize state
   const [cardMinimized, setCardMinimized] = useState(false);
 
+  // Stop Confirmation Modal
+  const [showStopModal, setShowStopModal] = useState(false);
+  const [endVerified, setEndVerified] = useState(false);
+  const [endSelfieDataUrl, setEndSelfieDataUrl] = useState<string | null>(null);
+  const endVideoRef = useRef<HTMLVideoElement>(null);
+  const endStreamRef = useRef<MediaStream | null>(null);
+  const [isStopping, setIsStopping] = useState(false);
+
   // Dev test mode — bypass geofencing (localhost only)
   const [testMode, setTestMode] = useState(false);
   const isDevEnv = typeof window !== 'undefined' && window.location.hostname === 'localhost';
@@ -171,6 +179,7 @@ export default function TrackingPage({ params }: { params: { id: string } }) {
   const handleStopTracking = async () => {
     if (!trackingId || !gpsPos) return;
     try {
+      setIsStopping(true);
       await api.post(`/tracking/stop/${trackingId}`, { lat: gpsPos.lat, lng: gpsPos.lng });
       if (timerRef.current) clearInterval(timerRef.current);
       localStorage.removeItem(STORAGE_KEY); // Clear persisted session
@@ -178,6 +187,8 @@ export default function TrackingPage({ params }: { params: { id: string } }) {
     } catch (err) {
       console.error('Failed to stop tracking', err);
       alert('Gagal menghentikan inspeksi.');
+    } finally {
+      setIsStopping(false);
     }
   };
 
@@ -264,6 +275,37 @@ export default function TrackingPage({ params }: { params: { id: string } }) {
     setVerifyModalOpen(false);
   };
 
+  // End verification camera functions
+  const openEndCamera = async () => {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user' } });
+      endStreamRef.current = stream;
+      setTimeout(() => {
+        if (endVideoRef.current) { endVideoRef.current.srcObject = stream; endVideoRef.current.play(); }
+      }, 100);
+    } catch { alert('Tidak dapat mengakses kamera.'); }
+  };
+
+  const captureEndPhoto = () => {
+    if (!endVideoRef.current) return;
+    const canvas = document.createElement('canvas');
+    canvas.width = endVideoRef.current.videoWidth;
+    canvas.height = endVideoRef.current.videoHeight;
+    canvas.getContext('2d')?.drawImage(endVideoRef.current, 0, 0);
+    setEndSelfieDataUrl(canvas.toDataURL('image/jpeg', 0.7));
+    stopEndCamera();
+  };
+
+  const stopEndCamera = () => {
+    endStreamRef.current?.getTracks().forEach(t => t.stop());
+    endStreamRef.current = null;
+  };
+
+  const confirmEndVerification = () => {
+    if (!endSelfieDataUrl) { alert('Silakan ambil foto terlebih dahulu.'); return; }
+    setEndVerified(true);
+  };
+
   const formatTime = (s: number) => {
     const h = String(Math.floor(s / 3600)).padStart(2, '0');
     const m = String(Math.floor((s % 3600) / 60)).padStart(2, '0');
@@ -288,6 +330,12 @@ export default function TrackingPage({ params }: { params: { id: string } }) {
     ? (haversineM(tugas.startPointLat, tugas.startPointLong, tugas.endPointLat, tugas.endPointLong) / 1000).toFixed(1)
     : null;
   const withinGeofence = testMode || (distanceToStart !== null && distanceToStart <= GEOFENCE_RADIUS);
+
+  // End point geofence
+  const distanceToEnd = gpsPos && tugas
+    ? haversineM(gpsPos.lat, gpsPos.lng, tugas.endPointLat, tugas.endPointLong)
+    : null;
+  const withinEndGeofence = testMode || (distanceToEnd !== null && distanceToEnd <= GEOFENCE_RADIUS);
 
   if (loading) return (
     <div className="flex h-screen items-center justify-center bg-background">
@@ -492,7 +540,7 @@ export default function TrackingPage({ params }: { params: { id: string } }) {
                 </div>
               </div>
               <div className="flex gap-md items-center">
-                <button onClick={handleStopTracking} className="flex-1 bg-error text-on-error rounded-full h-[56px] flex items-center justify-center gap-sm font-h3 shadow-lg active:scale-95 transition-transform">
+                <button onClick={() => setShowStopModal(true)} className="flex-1 bg-error text-on-error rounded-full h-[56px] flex items-center justify-center gap-sm font-h3 shadow-lg active:scale-95 transition-transform">
                   <span className="material-symbols-outlined text-[28px]" style={{ fontVariationSettings: "'FILL' 1" }}>stop_circle</span>
                   Selesai
                 </button>
@@ -624,6 +672,138 @@ export default function TrackingPage({ params }: { params: { id: string } }) {
               <button onClick={handleKirimLaporan} disabled={isSubmittingLaporan} className="flex-[2] py-3 rounded-xl bg-error text-on-error font-label-sm flex items-center justify-center gap-sm shadow-sm disabled:opacity-70">
                 <span className="material-symbols-outlined" style={{ fontVariationSettings: "'FILL' 1" }}>send</span>
                 {isSubmittingLaporan ? 'Mengirim...' : 'Kirim Laporan'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Stop Confirmation Modal */}
+      {showStopModal && (
+        <div className="fixed inset-0 z-[60] bg-on-surface/60 backdrop-blur-sm flex items-end md:items-center justify-center p-0 md:p-4 pointer-events-auto">
+          <div className="bg-surface w-full max-w-lg rounded-t-xl md:rounded-xl shadow-2xl overflow-hidden flex flex-col max-h-[85vh]">
+            <div className="bg-error px-md py-sm flex items-center justify-between shrink-0">
+              <h3 className="font-h3 text-h3 text-on-error flex items-center gap-sm">
+                <span className="material-symbols-outlined" style={{ fontVariationSettings: "'FILL' 1" }}>stop_circle</span> Selesai Inspeksi
+              </h3>
+              <button onClick={() => { setShowStopModal(false); stopEndCamera(); setEndSelfieDataUrl(null); setEndVerified(false); }} className="text-on-error/80 hover:text-on-error">
+                <span className="material-symbols-outlined">close</span>
+              </button>
+            </div>
+            <div className="p-md flex flex-col gap-md overflow-y-auto flex-1">
+              {/* Summary */}
+              <div className="bg-surface-container-low rounded-xl p-md space-y-sm">
+                <p className="font-label-sm text-label-sm text-on-surface-variant uppercase tracking-wider">Ringkasan Inspeksi</p>
+                <div className="grid grid-cols-3 gap-sm">
+                  <div className="flex flex-col items-center">
+                    <span className="font-label-sm text-[10px] text-on-surface-variant uppercase">Durasi</span>
+                    <span className="font-h3 text-on-surface font-bold">{formatTime(elapsed)}</span>
+                  </div>
+                  <div className="flex flex-col items-center">
+                    <span className="font-label-sm text-[10px] text-on-surface-variant uppercase">Titik GPS</span>
+                    <span className="font-h3 text-on-surface font-bold">{trackPath.length}</span>
+                  </div>
+                  <div className="flex flex-col items-center">
+                    <span className="font-label-sm text-[10px] text-on-surface-variant uppercase">Akurasi</span>
+                    <span className="font-h3 text-on-surface font-bold">±{gpsPos ? Math.round(gpsPos.accuracy) : '-'}m</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* End Geofencing */}
+              {distanceToEnd !== null && (
+                <div className={`rounded-lg p-sm border ${withinEndGeofence ? 'bg-primary-container/10 border-primary/30' : 'bg-error-container/10 border-error/20'}`}>
+                  <div className="flex items-center justify-between mb-xs">
+                    <span className="font-label-sm text-[11px] text-on-surface-variant uppercase flex items-center gap-xs">
+                      <span className="material-symbols-outlined text-[14px]">{withinEndGeofence ? 'location_on' : 'near_me'}</span>
+                      Jarak ke Titik Akhir
+                    </span>
+                    <span className={`font-label-sm text-[11px] font-bold ${withinEndGeofence ? 'text-primary' : 'text-error'}`}>
+                      {distanceToEnd < 1000 ? `${Math.round(distanceToEnd)}m` : `${(distanceToEnd/1000).toFixed(1)}km`}
+                    </span>
+                  </div>
+                  <div className="w-full bg-surface-container rounded-full h-1.5 overflow-hidden">
+                    <div
+                      className={`h-full rounded-full transition-all ${withinEndGeofence ? 'bg-primary' : 'bg-error'}`}
+                      style={{ width: `${Math.min(100, (GEOFENCE_RADIUS / Math.max(distanceToEnd, 1)) * 100)}%` }}
+                    />
+                  </div>
+                  <p className={`font-label-sm text-[10px] mt-xs ${withinEndGeofence ? 'text-primary' : 'text-error'}`}>
+                    {withinEndGeofence ? '✓ Anda sudah berada di titik akhir inspeksi' : `Anda belum berada di titik akhir. Radius: ${GEOFENCE_RADIUS}m`}
+                  </p>
+                </div>
+              )}
+
+              {/* End Identity Verification */}
+              <div className="flex flex-col gap-sm">
+                <p className="font-label-sm text-label-sm text-on-surface-variant uppercase tracking-wider">Verifikasi Identitas Akhir</p>
+                {!endSelfieDataUrl ? (
+                  <div className="relative w-full aspect-[4/3] bg-black rounded-xl overflow-hidden">
+                    <video ref={endVideoRef} autoPlay playsInline muted className="w-full h-full object-cover" />
+                    <div className="absolute bottom-3 left-0 right-0 flex justify-center">
+                      <button onClick={captureEndPhoto} className="w-16 h-16 bg-white rounded-full border-4 border-error shadow-lg flex items-center justify-center active:scale-90 transition-transform">
+                        <span className="material-symbols-outlined text-error text-[32px]">photo_camera</span>
+                      </button>
+                    </div>
+                    {!endStreamRef.current && (
+                      <button onClick={openEndCamera} className="absolute inset-0 flex flex-col items-center justify-center bg-surface-container gap-sm text-on-surface-variant">
+                        <span className="material-symbols-outlined text-[40px]">photo_camera</span>
+                        <span className="font-label-sm text-label-sm">Tap untuk buka kamera</span>
+                      </button>
+                    )}
+                  </div>
+                ) : (
+                  <div className="relative w-full aspect-[4/3] rounded-xl overflow-hidden">
+                    <img src={endSelfieDataUrl} alt="Selfie akhir" className="w-full h-full object-cover" />
+                    <button onClick={() => { setEndSelfieDataUrl(null); setEndVerified(false); openEndCamera(); }} className="absolute top-2 right-2 bg-surface/80 backdrop-blur-sm rounded-full p-1.5">
+                      <span className="material-symbols-outlined text-error">refresh</span>
+                    </button>
+                    <div className="absolute bottom-2 left-2 bg-primary/90 text-on-primary px-2 py-1 rounded-full flex items-center gap-1">
+                      <span className="material-symbols-outlined text-[14px]">check</span>
+                      <span className="font-label-sm text-[10px]">Foto terverifikasi</span>
+                    </div>
+                  </div>
+                )}
+                {/* GPS info */}
+                <div className="flex items-center gap-sm p-sm bg-surface-container-low rounded-lg">
+                  <span className="material-symbols-outlined text-primary text-[20px]">location_on</span>
+                  <span className="font-label-sm text-label-sm text-on-surface-variant">
+                    {gpsPos ? `${gpsPos.lat.toFixed(6)}, ${gpsPos.lng.toFixed(6)} (±${Math.round(gpsPos.accuracy)}m)` : 'Menunggu GPS...'}
+                  </span>
+                </div>
+              </div>
+
+              {/* Dev test mode */}
+              {isDevEnv && (
+                <button
+                  onClick={() => setTestMode(m => !m)}
+                  className={`flex items-center justify-between p-sm rounded-lg border transition-colors ${
+                    testMode
+                      ? 'bg-amber-500/10 border-amber-500/40 text-amber-600'
+                      : 'bg-surface-container border-outline-variant text-on-surface-variant'
+                  }`}
+                >
+                  <span className="flex items-center gap-sm font-label-sm text-[11px]">
+                    <span className="material-symbols-outlined text-[16px]">science</span>
+                    Mode Testing (bypass geofencing)
+                  </span>
+                  <span className={`w-9 h-5 rounded-full relative transition-colors ${testMode ? 'bg-amber-500' : 'bg-outline-variant'}`}>
+                    <span className={`absolute top-0.5 w-4 h-4 bg-white rounded-full shadow transition-all ${testMode ? 'left-4' : 'left-0.5'}`} />
+                  </span>
+                </button>
+              )}
+            </div>
+            <div className="p-md bg-surface-container-lowest border-t border-surface-variant flex gap-md shrink-0">
+              <button onClick={() => { setShowStopModal(false); stopEndCamera(); setEndSelfieDataUrl(null); setEndVerified(false); }} className="flex-1 py-3 rounded-xl border border-outline text-on-surface font-label-sm hover:bg-surface-container-low">
+                Batal
+              </button>
+              <button
+                onClick={() => { confirmEndVerification(); if (endSelfieDataUrl) handleStopTracking(); }}
+                disabled={!endSelfieDataUrl || !withinEndGeofence || isStopping}
+                className="flex-[2] py-3 rounded-xl bg-error text-on-error font-label-sm flex items-center justify-center gap-sm shadow-sm disabled:opacity-50"
+              >
+                <span className="material-symbols-outlined" style={{ fontVariationSettings: "'FILL' 1" }}>stop_circle</span>
+                {isStopping ? 'Menghentikan...' : 'Konfirmasi Selesai'}
               </button>
             </div>
           </div>
