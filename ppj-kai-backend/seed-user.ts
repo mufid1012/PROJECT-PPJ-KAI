@@ -7,33 +7,7 @@ async function main() {
   const hashedPassword = await bcrypt.hash('password123', 10);
   const hashedAdminPassword = await bcrypt.hash('admin123', 10);
   
-  // Upsert petugas user with full profile data
-  const user = await prisma.user.upsert({
-    where: { nipp: 'KAI-1234' },
-    update: {
-      password: hashedPassword,
-      jabatan: 'Track Inspector',
-      division: 'DAOP 1 Jakarta',
-      workArea: 'Sektor 4 (GMR-JAKK)',
-      phone: '+62 812-3456-7890',
-      isActive: true,
-    },
-    create: {
-      nipp: 'KAI-1234',
-      password: hashedPassword,
-      nama: 'Budi Santoso',
-      role: 'petugas',
-      jabatan: 'Track Inspector',
-      division: 'DAOP 1 Jakarta',
-      workArea: 'Sektor 4 (GMR-JAKK)',
-      phone: '+62 812-3456-7890',
-      isActive: true,
-    }
-  });
-
-  console.log('Petugas created:', user);
-
-  // Upsert admin user
+  // Upsert admin user FIRST (so we can link petugas to admin via managerId)
   const admin = await prisma.user.upsert({
     where: { nipp: 'ADMIN-001' },
     update: { password: hashedAdminPassword },
@@ -47,6 +21,34 @@ async function main() {
   });
 
   console.log('Admin created:', admin);
+
+  // Upsert petugas user with full profile data, linked to admin via managerId
+  const user = await prisma.user.upsert({
+    where: { nipp: 'KAI-1234' },
+    update: {
+      password: hashedPassword,
+      managerId: admin.id,
+      jabatan: 'Track Inspector',
+      division: 'DAOP 1 Jakarta',
+      workArea: 'Sektor 4 (GMR-JAKK)',
+      phone: '+62 812-3456-7890',
+      isActive: true,
+    },
+    create: {
+      nipp: 'KAI-1234',
+      password: hashedPassword,
+      nama: 'Budi Santoso',
+      role: 'petugas',
+      managerId: admin.id,
+      jabatan: 'Track Inspector',
+      division: 'DAOP 1 Jakarta',
+      workArea: 'Sektor 4 (GMR-JAKK)',
+      phone: '+62 812-3456-7890',
+      isActive: true,
+    }
+  });
+
+  console.log('Petugas created:', user);
 
   // Create tasks for this user (only if none exist)
   const existingTasks = await prisma.tugasPpj.count({

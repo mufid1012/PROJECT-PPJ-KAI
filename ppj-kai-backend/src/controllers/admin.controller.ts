@@ -3,7 +3,7 @@ import prisma from '../config/database';
 
 // Extend Request type to include user (set by auth middleware)
 interface AuthRequest extends Request {
-  user?: { id: number; nipp: string; role: string };
+  user?: { id: number; role: string };
 }
 
 // GET /admin/stats

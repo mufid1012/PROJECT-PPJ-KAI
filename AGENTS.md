@@ -36,7 +36,7 @@ src/
 │   ├── tugas.controller.ts     # getTugasPetugas, getTugasSummary, getTugasById
 │   ├── tracking.controller.ts  # startTracking, stopTracking, updateTracking, getActiveTracking
 │   ├── laporan.controller.ts   # createLaporan, getLaporan
-│   └── admin.controller.ts     # getStats, getAllPetugas, getAllTugas, createTugas, deleteTugas, getAllEmergency
+│   └── admin.controller.ts     # getStats, getAllPetugas, getAvailablePetugas, addPetugasToManager, removePetugasFromManager, getAllTugas, createTugas, deleteTugas, getAllEmergency
 └── routes/
     ├── auth.routes.ts           # /api/auth/*
     ├── tugas.routes.ts          # /api/tugas/* (requireAuth)
@@ -45,7 +45,7 @@ src/
     └── admin.routes.ts          # /api/admin/* (requireAuth + requireAdmin)
 
 prisma/schema.prisma             # 4 tabel: User, TugasPpj, Tracking, Laporan
-seed-user.ts                     # Seeder: petugas KAI-1234 (profil lengkap) + admin + 2 tugas sample
+seed-user.ts                     # Seeder: admin PERTAMA, lalu petugas KAI-1234 (dengan managerId → admin) + 2 tugas sample
 .env                             # DATABASE_URL, PORT, JWT_SECRET
 ```
 
@@ -98,6 +98,9 @@ users (User)
 ├── work_area: String? (100) — e.g. "Sektor 4 (GMR-JAKK)"
 ├── phone: String? (30) — e.g. "+62 812-3456-7890"
 ├── is_active: Boolean (default true)
+├── manager_id: Int? (FK → users.id, self-relation) — admin yang mengelola petugas ini
+├── manager: User? (self-relation "ManagerPetugas")
+├── petugasManaged: User[] (self-relation "ManagerPetugas")
 └── 1:N → tugas_ppj
 
 tugas_ppj (TugasPpj)
@@ -123,7 +126,7 @@ tracking (Tracking)
 laporan (Laporan)
 ├── id: Int (PK, auto)
 ├── tracking_id: Int (FK → tracking.id)
-├── jenis_temuan: String (20) → "ringan" | "berat" | "darurat"
+├── jenis_temuan: String (20) → "ringan" | "berat" | "emergency"
 ├── deskripsi: Text
 ├── foto: Text? (base64 encoded)
 ├── latitude/longitude: Float
@@ -152,12 +155,18 @@ laporan (Laporan)
 - `GET /api/laporan` → list laporan milik petugas
 
 ### Admin (requireAuth + requireAdmin)
-- `GET /api/admin/stats` → counts (petugas, tugas, aktif, emergency)
-- `GET /api/admin/petugas` → list petugas + tugasnya
-- `GET /api/admin/tugas` → list semua tugas + user info
-- `POST /api/admin/tugas` → buat tugas baru (assign ke petugas)
-- `DELETE /api/admin/tugas/:id` → hapus tugas
-- `GET /api/admin/emergency` → list semua laporan darurat + koordinat
+
+> **Penting**: Semua endpoint admin di-scope by `managerId`. Admin hanya bisa melihat/mengelola petugas yang `managerId`-nya = ID admin yang login. Petugas tanpa `managerId` tidak akan muncul di dashboard admin manapun.
+
+- `GET /api/admin/stats` → counts (petugas, tugas, aktif, emergency) — scoped by managerId
+- `GET /api/admin/petugas` → list petugas yang dikelola admin ini (`managerId = adminId`)
+- `GET /api/admin/petugas/available` → list petugas yang belum dikelola siapapun (`managerId = null`)
+- `POST /api/admin/petugas/add` → `{ nipps: string[] }` → assign petugas ke admin ini (set managerId)
+- `POST /api/admin/petugas/remove` → `{ id: number }` → lepas petugas dari kelolaan admin (set managerId = null)
+- `GET /api/admin/tugas` → list tugas milik petugas kelolaan admin + tracking + laporan
+- `POST /api/admin/tugas` → buat tugas baru (hanya bisa assign ke petugas kelolaan sendiri)
+- `DELETE /api/admin/tugas/:id` → hapus tugas (hanya milik petugas kelolaan sendiri)
+- `GET /api/admin/emergency` → list laporan darurat dari petugas kelolaan admin + koordinat
 
 ---
 
@@ -267,10 +276,12 @@ npm run dev    # → localhost:3000
 1. **JANGAN baca `package-lock.json`** — file ini 1943 baris dan tidak berguna untuk context
 2. **JANGAN baca `node_modules/`** — gunakan `package.json` untuk cek dependency
 3. **JANGAN baca `tsconfig.json`** kecuali ada error TypeScript config
-4. **File terbesar**: `inspeksi/[id]/page.tsx` (~640 baris) dan `admin/page.tsx` (~300 baris) — baca per section, jangan sekaligus
+4. **File terbesar**: `inspeksi/[id]/page.tsx` (~640 baris) dan `admin/page.tsx` (~687 baris) — baca per section, jangan sekaligus
 5. **Prisma schema** = sumber kebenaran untuk struktur database
 6. **`globals.css`** = semua design tokens (warna, spacing, typography, font sizes)
 7. Selalu cek `lib/api.ts` untuk base URL dan interceptor sebelum debug API calls
 8. Railway logic ada SEMUA di `lib/railway.ts` — satu file, satu concern
 9. **Jangan duplikasi `petugasColor()`** — sudah ada di AdminMap.tsx dan admin/page.tsx, idealnya dipindah ke utils jika perlu di tempat lain
 10. **Profile page** (`/profile`) — data diambil dari API, bukan hardcode. NIPP dan role selalu read-only di edit modal.
+11. **managerId pattern** — Semua data admin di-scope via `managerId`. Seeder HARUS buat admin dulu, lalu petugas dengan `managerId: admin.id`. Tanpa ini, dashboard admin kosong total.
+12. **JWT payload** hanya berisi `{ id, role }` — TIDAK ada `nipp`. Jangan akses `req.user.nipp` dari JWT decoded.
