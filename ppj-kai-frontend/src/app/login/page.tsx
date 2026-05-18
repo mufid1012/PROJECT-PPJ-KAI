@@ -85,11 +85,8 @@ export default function LoginPage() {
         </div>
         
         <div className="relative z-10 text-on-primary max-w-lg">
-          <h2 className="font-h1 text-h1 mb-md leading-tight">Monitoring Petugas Pemeriksa Jalur<br/>DAOP 6 Yogyakarta.</h2>
+          <h2 className="font-h2 text-h2 mb-md leading-tight">Monitoring Petugas Pemeriksa Jalur<br/>DAOP 6 Yogyakarta.</h2>
 
-          <p className="font-body-lg text-body-lg text-primary-fixed-dim">
-            Empowering track maintenance divisions with real-time data, predictive analytics, and seamless field reporting to ensure the highest safety standards across the network.
-          </p>
           
           {/* Trust Indicators */}
           <div className="flex gap-lg mt-xl pt-lg border-t border-primary-fixed-dim/30">
@@ -116,8 +113,8 @@ export default function LoginPage() {
           
           {/* Page Header */}
           <div className="mb-lg">
-            <h2 className="font-h1 text-h1 text-on-surface mb-2">Access Portal</h2>
-            <p className="font-body-md text-body-md text-on-surface-variant">Enter your credentials to manage field assignments and track health.</p>
+            <h2 className="font-h1 text-h1 text-on-surface mb-2">Akses Portal</h2>
+            <p className="font-body-md text-body-md text-on-surface-variant">Silakan masuk menggunakan akun yang telah terdaftar.</p>
           </div>
           
           {/* Login Form */}
@@ -136,7 +133,7 @@ export default function LoginPage() {
                 <input 
                   className="w-full pl-10 pr-10 py-3 bg-surface-container-lowest border border-outline-variant rounded-lg focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-all font-body-lg text-body-lg text-on-surface placeholder:text-outline shadow-sm" 
                   id="nipp" 
-                  placeholder="Enter your NIPP" 
+                  placeholder="Masukkan NIPP Anda" 
                   type="text" 
                   value={nipp}
                   onChange={(e) => setNipp(e.target.value)}
@@ -187,14 +184,14 @@ export default function LoginPage() {
             <div className="flex flex-col gap-2">
               <div className="flex justify-between items-center">
                 <label className="font-label-sm text-label-sm text-on-surface" htmlFor="password">Password</label>
-                <Link className="font-label-sm text-label-sm text-primary hover:text-primary-container transition-colors" href="#">Forgot password?</Link>
+                <Link className="font-label-sm text-label-sm text-primary hover:text-primary-container transition-colors" href="#">Lupa Password?</Link>
               </div>
               <div className="relative group">
                 <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-outline group-focus-within:text-primary transition-colors">lock</span>
                 <input 
                   className="w-full pl-10 pr-10 py-3 bg-surface-container-lowest border border-outline-variant rounded-lg focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-all font-body-lg text-body-lg text-on-surface shadow-sm" 
                   id="password" 
-                  placeholder="Enter password" 
+                  placeholder="Masukkan password" 
                   type={showPassword ? "text" : "password"} 
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
@@ -216,10 +213,10 @@ export default function LoginPage() {
                 type="submit"
                 disabled={isLoading}
               >
-                {isLoading ? 'Memverifikasi...' : 'Secure Login'} <span className="material-symbols-outlined text-[18px]">arrow_forward</span>
+                {isLoading ? 'Memverifikasi...' : 'Masuk'} <span className="material-symbols-outlined text-[18px]">arrow_forward</span>
               </button>
               <p className="font-body-md text-body-md text-on-surface-variant text-center">
-                Need an account? <Link className="text-primary font-semibold hover:underline" href="/register">Register here</Link>
+                Belum ada akun? <Link className="text-primary font-semibold hover:underline" href="/register">Daftar Disini</Link>
 
               </p>
             </div>
