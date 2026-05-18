@@ -8,40 +8,45 @@ datasource db {
 }
 
 model User {
-  id        Int       @id @default(autoincrement())
-  nipp      String    @unique @db.VarChar(20)
-  nama      String    @db.VarChar(100)
-  password  String    @db.VarChar(255)
-  foto      String?   @db.Text
-  role      String    @default("petugas") @db.VarChar(20) // admin | petugas
-  jabatan   String?   @db.VarChar(100) // e.g. "Track Inspector"
-  division  String?   @db.VarChar(100) // e.g. "DAOP 1 Jakarta"
-  workArea  String?   @map("work_area") @db.VarChar(100) // e.g. "Sektor 4 (GMR-JAKK)"
-  phone     String?   @db.VarChar(30)  // e.g. "+62 812-3456-7890"
-  isActive  Boolean   @default(true) @map("is_active")
-  tugasPpj  TugasPpj[]
-  createdAt DateTime  @default(now()) @map("created_at")
-  updatedAt DateTime  @updatedAt @map("updated_at")
+  id             Int        @id @default(autoincrement())
+  nipp           String     @unique @db.VarChar(20)
+  nama           String     @db.VarChar(100)
+  password       String     @db.VarChar(255)
+  foto           String?    @db.Text
+  role           String     @default("petugas") @db.VarChar(20) // admin | petugas
+  jabatan        String?    @db.VarChar(100) // e.g. "Track Inspector"
+  division       String?    @db.VarChar(100) // e.g. "DAOP 1 Jakarta"
+  workArea       String?    @map("work_area") @db.VarChar(100) // e.g. "Sektor 4 (GMR-JAKK)"
+  phone          String?    @db.VarChar(30) // e.g. "+62 812-3456-7890"
+  isActive       Boolean    @default(true) @map("is_active")
+  managerId      Int?       @map("manager_id") // ID of the admin who manages this petugas
+  tugasPpj       TugasPpj[]
+  createdAt      DateTime   @default(now()) @map("created_at")
+  updatedAt      DateTime   @updatedAt @map("updated_at")
+
+  // Self-relation
+  manager        User?      @relation("ManagerPetugas", fields: [managerId], references: [id])
+  petugasManaged User[]     @relation("ManagerPetugas")
 
   @@map("users")
 }
 
 model TugasPpj {
-  id             Int       @id @default(autoincrement())
-  jalur          String    @db.VarChar(200)
-  tanggal        DateTime  @db.Date
-  startPointLat  Float     @map("start_point_lat")
-  startPointLong Float     @map("start_point_long")
-  endPointLat    Float     @map("end_point_lat")
-  endPointLong   Float     @map("end_point_long")
-  startPointName String?   @map("start_point_name") @db.VarChar(200)
-  endPointName   String?   @map("end_point_name") @db.VarChar(200)
-  assignedTo     Int       @map("assigned_to")
-  status         String    @default("pending") @db.VarChar(20) // pending | in_progress | completed | cancelled
-  user           User      @relation(fields: [assignedTo], references: [id])
+  id             Int        @id @default(autoincrement())
+  jalur          String     @db.VarChar(200)
+  tanggal        DateTime   @db.Date
+  startPointLat  Float      @map("start_point_lat")
+  startPointLong Float      @map("start_point_long")
+  endPointLat    Float      @map("end_point_lat")
+  endPointLong   Float      @map("end_point_long")
+  startPointName String?    @map("start_point_name") @db.VarChar(200)
+  endPointName   String?    @map("end_point_name") @db.VarChar(200)
+  assignedTo     Int        @map("assigned_to")
+  status         String     @default("pending") @db.VarChar(20) // pending | in_progress | completed | cancelled
+  user           User       @relation(fields: [assignedTo], references: [id])
   tracking       Tracking[]
-  createdAt      DateTime  @default(now()) @map("created_at")
-  updatedAt      DateTime  @updatedAt @map("updated_at")
+  createdAt      DateTime   @default(now()) @map("created_at")
+  updatedAt      DateTime   @updatedAt @map("updated_at")
 
   @@map("tugas_ppj")
 }
@@ -66,15 +71,15 @@ model Tracking {
 }
 
 model Laporan {
-  id            Int      @id @default(autoincrement())
-  trackingId    Int      @map("tracking_id")
-  jenisTemuan   String   @map("jenis_temuan") @db.VarChar(20)
-  deskripsi     String   @db.Text
-  foto          String?  @db.Text
-  latitude      Float
-  longitude     Float
-  tracking      Tracking @relation(fields: [trackingId], references: [id])
-  createdAt     DateTime @default(now()) @map("created_at")
+  id          Int      @id @default(autoincrement())
+  trackingId  Int      @map("tracking_id")
+  jenisTemuan String   @map("jenis_temuan") @db.VarChar(20)
+  deskripsi   String   @db.Text
+  foto        String?  @db.Text
+  latitude    Float
+  longitude   Float
+  tracking    Tracking @relation(fields: [trackingId], references: [id])
+  createdAt   DateTime @default(now()) @map("created_at")
 
   @@map("laporan")
 }

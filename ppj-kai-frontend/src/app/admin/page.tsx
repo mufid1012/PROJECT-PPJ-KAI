@@ -18,13 +18,19 @@ function petugasColor(nipp: string): string {
 const AdminMap = dynamic(() => import('../../components/map/AdminMap'), { ssr: false });
 
 interface Petugas { id: number; nipp: string; nama: string; tugasPpj: { id: number; jalur: string; status: string }[] }
-interface Tugas { id: number; jalur: string; tanggal: string; startPointLat: number; startPointLong: number; endPointLat: number; endPointLong: number; startPointName: string; endPointName: string; status: string; user: { nama: string; nipp: string } }
-interface Emergency { id: number; latitude: number; longitude: number; jenisTemuan: string; deskripsi: string; foto: string | null; createdAt: string; tracking: { tugas: { jalur: string; user: { nama: string; nipp: string } } } }
+interface Tugas { id: number; jalur: string; tanggal: string; startPointLat: number; startPointLong: number; endPointLat: number; endPointLong: number; startPointName: string; endPointName: string; status: string; user: { nama: string; nipp: string }, tracking?: { startTime: string, endTime: string, durasi: number, status: string, laporan: Emergency[] }[] }
+interface Emergency { id: number; latitude: number; longitude: number; jenisTemuan: string; deskripsi: string; foto: string | null; createdAt: string; tracking?: { tugas: { jalur: string; user: { nama: string; nipp: string } } } }
 interface Stats { totalPetugas: number; tugasAktif: number; tugasSelesai: number; laporanDarurat: number }
 
 const STATUS_COLOR: Record<string, string> = { pending: 'bg-surface-container text-on-surface-variant border-outline-variant', in_progress: 'bg-primary-container/20 text-primary border-primary/30', completed: 'bg-primary-fixed text-on-primary-fixed-variant border-transparent' };
 const STATUS_LABEL: Record<string, string> = { pending: 'Pending', in_progress: 'Berlangsung', completed: 'Selesai' };
 const JENIS_LABEL: Record<string, string> = { berat: 'Baut Lepas', emergency: 'Rel Retak', sedang: 'Penghalang', ringan: 'Lainnya' };
+const JENIS_COLOR: Record<string, string> = {
+  berat: 'bg-rose-100 text-rose-700',
+  emergency: 'bg-rose-100 text-rose-700',
+  sedang: 'bg-blue-100 text-blue-700',
+  ringan: 'bg-slate-100 text-slate-700',
+};
 
 export default function AdminPage() {
   const router = useRouter();
@@ -41,6 +47,24 @@ export default function AdminPage() {
   const [form, setForm] = useState({ jalur: '', tanggal: '', assignedTo: '', startPointName: '', endPointName: '', startPointLat: '', startPointLong: '', endPointLat: '', endPointLong: '' });
   const [pickMode, setPickMode] = useState<'start' | 'end' | null>(null);
   const [submitting, setSubmitting] = useState(false);
+
+  const [showAddPetugasModal, setShowAddPetugasModal] = useState(false);
+  const [availablePetugas, setAvailablePetugas] = useState<{id: number, nipp: string, nama: string}[]>([]);
+  const [searchPetugas, setSearchPetugas] = useState('');
+  const [selectedNipps, setSelectedNipps] = useState<string[]>([]);
+  const [addingPetugas, setAddingPetugas] = useState(false);
+  
+  // History state
+  const [selectedPetugasHistory, setSelectedPetugasHistory] = useState<Petugas | null>(null);
+
+  const fetchAvailablePetugas = async () => {
+    try {
+      const res = await api.get('/admin/petugas/available');
+      setAvailablePetugas(res.data.data);
+    } catch (e) {
+      console.error(e);
+    }
+  };
 
   const fetchAll = useCallback(async () => {
     try {
@@ -99,7 +123,7 @@ export default function AdminPage() {
       setShowTaskModal(false);
       setForm({ jalur: '', tanggal: '', assignedTo: '', startPointName: '', endPointName: '', startPointLat: '', startPointLong: '', endPointLat: '', endPointLong: '' });
       fetchAll();
-    } catch (e) { console.error(e); alert('Gagal membuat tugas.'); }
+    } catch (e: any) { console.error(e); alert(e.response?.data?.message || 'Gagal membuat tugas.'); }
     finally { setSubmitting(false); }
   };
 
@@ -108,136 +132,216 @@ export default function AdminPage() {
     try { await api.delete(`/admin/tugas/${id}`); fetchAll(); } catch { alert('Gagal menghapus.'); }
   };
 
+  const handleAddPetugas = async () => {
+    if (selectedNipps.length === 0) return;
+    try {
+      setAddingPetugas(true);
+      const res = await api.post('/admin/petugas/add', { nipps: selectedNipps });
+      alert(res.data.message);
+      setShowAddPetugasModal(false);
+      setSelectedNipps([]);
+      fetchAll();
+    } catch (e: any) {
+      alert(e.response?.data?.message || 'Gagal menambahkan petugas.');
+    } finally {
+      setAddingPetugas(false);
+    }
+  };
+
+  const handleRemovePetugas = async (id: number) => {
+    if (!confirm('Hapus petugas ini dari daftar kelola Anda? Mereka tidak akan dihapus dari sistem, hanya dari pantauan Anda.')) return;
+    try {
+      await api.post('/admin/petugas/remove', { id });
+      fetchAll();
+    } catch (e: any) {
+      alert(e.response?.data?.message || 'Gagal menghapus petugas.');
+    }
+  };
+
   const mapEmergencies = emergencies.map(e => ({ id: e.id, latitude: e.latitude, longitude: e.longitude, jenisTemuan: e.jenisTemuan, deskripsi: e.deskripsi, foto: e.foto, createdAt: e.createdAt, petugasNama: e.tracking?.tugas?.user?.nama, jalur: e.tracking?.tugas?.jalur }));
   const mapTasks = tugas.map(t => ({ id: t.id, jalur: t.jalur, startPointLat: t.startPointLat, startPointLong: t.startPointLong, endPointLat: t.endPointLat, endPointLong: t.endPointLong, startPointName: t.startPointName, endPointName: t.endPointName, status: t.status, petugasNama: t.user?.nama, petugasNipp: t.user?.nipp }));
 
   return (
-    <div className="h-screen flex flex-col bg-background overflow-hidden">
-      {/* Header */}
-      <header className="h-14 bg-surface border-b border-outline-variant flex items-center justify-between px-lg shrink-0 z-50">
-        <div className="flex items-center gap-sm">
+    <div className="h-screen flex flex-col bg-[#F8FAFC] font-sans overflow-hidden">
+      {/* Premium Header */}
+      <header className="h-16 bg-white border-b border-slate-200 flex items-center justify-between px-6 shrink-0 z-50 shadow-sm">
+        <div className="flex items-center gap-4">
           <img src="/logo-kai.png" alt="KAI Logo" className="h-8 w-auto object-contain" />
-          <h1 className="font-h3 text-h3 font-bold text-primary">RailTrack Admin</h1>
-          <span className="ml-sm px-sm py-0.5 bg-error-container text-on-error-container font-label-sm text-[10px] rounded-full uppercase">Admin</span>
+          <div className="h-6 w-px bg-slate-200 hidden sm:block"></div>
+          <h1 className="font-h3 text-lg font-extrabold text-slate-800 tracking-tight hidden sm:block">Command Center <span className="text-primary">PPJ</span></h1>
+          <span className="ml-2 px-2 py-0.5 bg-slate-800 text-white font-label-sm text-[10px] rounded uppercase font-bold tracking-widest shadow-sm">Portal Admin</span>
         </div>
-        <div className="flex items-center gap-md">
-          <span className="font-body-md text-on-surface-variant hidden sm:block">{user?.nama}</span>
-          <button onClick={handleLogout} className="flex items-center gap-xs text-on-surface-variant hover:text-error transition-colors font-label-sm">
-            <span className="material-symbols-outlined text-[18px]">logout</span> Keluar
+        <div className="flex items-center gap-6">
+          <div className="flex items-center gap-3">
+            <div className="w-8 h-8 bg-primary-container text-primary rounded-full flex items-center justify-center font-bold text-sm border border-primary/20">
+              {user?.nama?.substring(0, 2).toUpperCase() || 'AD'}
+            </div>
+            <div className="hidden md:flex flex-col">
+              <span className="font-body-md text-sm font-bold text-slate-700 leading-none">{user?.nama}</span>
+            </div>
+          </div>
+          <div className="w-px h-6 bg-slate-200"></div>
+          <button onClick={handleLogout} className="flex items-center gap-2 text-slate-500 hover:text-error transition-colors font-label-sm font-semibold">
+            <span className="material-symbols-outlined text-[20px]">logout</span>
           </button>
         </div>
       </header>
 
-      <div className="flex flex-1 overflow-hidden">
-        {/* Sidebar */}
-        <aside className="w-80 bg-surface border-r border-outline-variant flex flex-col overflow-hidden shrink-0">
-          {/* Stats */}
-          <div className="p-md grid grid-cols-2 gap-sm border-b border-outline-variant">
+      {/* Main Content Workspace */}
+      <div className="flex flex-1 overflow-hidden p-4 gap-4">
+        
+        {/* Left Sidebar (Stats + Lists) */}
+        <aside className="w-[420px] flex flex-col gap-4 shrink-0">
+          {/* KPI Grid */}
+          <div className="grid grid-cols-2 gap-3 shrink-0">
             {[
-              { label: 'Petugas', value: stats?.totalPetugas ?? '-', icon: 'group', color: 'text-primary' },
-              { label: 'Tugas Aktif', value: stats?.tugasAktif ?? '-', icon: 'task_alt', color: 'text-primary' },
-              { label: 'Selesai', value: stats?.tugasSelesai ?? '-', icon: 'check_circle', color: 'text-primary' },
-              { label: 'Darurat', value: stats?.laporanDarurat ?? '-', icon: 'emergency', color: 'text-error' },
+              { label: 'Total Petugas', value: stats?.totalPetugas ?? '-', icon: 'group', color: 'text-blue-600', bg: 'bg-white', border: 'border-slate-200' },
+              { label: 'Tugas Aktif', value: stats?.tugasAktif ?? '-', icon: 'task_alt', color: 'text-amber-600', bg: 'bg-white', border: 'border-slate-200' },
+              { label: 'Tugas Selesai', value: stats?.tugasSelesai ?? '-', icon: 'check_circle', color: 'text-emerald-600', bg: 'bg-white', border: 'border-slate-200' },
+              { label: 'Laporan Darurat', value: stats?.laporanDarurat ?? '-', icon: 'emergency', color: 'text-rose-600', bg: 'bg-white', border: 'border-slate-200' },
             ].map(s => (
-              <div key={s.label} className="bg-surface-container-lowest rounded-lg p-sm border border-outline-variant">
-                <div className="flex items-center gap-xs text-on-surface-variant mb-xs">
-                  <span className={`material-symbols-outlined text-[14px] ${s.color}`}>{s.icon}</span>
-                  <span className="font-label-sm text-[10px] uppercase">{s.label}</span>
+              <div key={s.label} className={`rounded-xl p-3 border shadow-sm flex items-center gap-3 ${s.bg} ${s.border}`}>
+                <div className={`w-10 h-10 rounded-lg flex items-center justify-center bg-slate-50 ${s.color}`}>
+                  <span className="material-symbols-outlined text-[20px]">{s.icon}</span>
                 </div>
-                <div className={`font-h3 text-h3 font-bold ${s.color}`}>{s.value}</div>
+                <div>
+                  <p className="font-h2 text-xl font-extrabold text-slate-800 leading-none mb-1">{s.value}</p>
+                  <p className="font-label-sm text-[10px] text-slate-500 uppercase tracking-wider font-semibold leading-none">{s.label}</p>
+                </div>
               </div>
             ))}
           </div>
 
-          {/* Tabs */}
-          <div className="flex border-b border-outline-variant shrink-0">
-            {(['map', 'tasks', 'emergency'] as const).map(tab => (
-              <button key={tab} onClick={() => setActiveTab(tab)}
-                className={`flex-1 py-sm font-label-sm text-label-sm capitalize transition-colors ${activeTab === tab ? 'text-primary border-b-2 border-primary bg-primary-container/10' : 'text-on-surface-variant hover:bg-surface-container-low'}`}>
-                {tab === 'map' ? 'Petugas' : tab === 'tasks' ? 'Tugas' : 'Darurat'}
+          {/* Activity Panel */}
+          <div className="flex-1 bg-white border border-slate-200 rounded-xl shadow-sm flex flex-col overflow-hidden">
+            {/* Tabs */}
+            <div className="flex border-b border-slate-200 shrink-0 bg-slate-50">
+              <button onClick={() => setActiveTab('map')} className={`flex-1 py-3 text-xs font-bold uppercase tracking-wider transition-colors border-b-2 ${activeTab === 'map' ? 'text-primary border-primary bg-primary-container/5' : 'text-slate-500 border-transparent hover:bg-slate-100'}`}>
+                Petugas
               </button>
-            ))}
-          </div>
+              <button onClick={() => setActiveTab('tasks')} className={`flex-1 py-3 text-xs font-bold uppercase tracking-wider transition-colors border-b-2 ${activeTab === 'tasks' ? 'text-primary border-primary bg-primary-container/5' : 'text-slate-500 border-transparent hover:bg-slate-100'}`}>
+                Penugasan
+              </button>
+              <button onClick={() => setActiveTab('emergency')} className={`flex-1 py-3 text-xs font-bold uppercase tracking-wider transition-colors border-b-2 ${activeTab === 'emergency' ? 'text-rose-600 border-rose-600 bg-rose-50/50' : 'text-slate-500 border-transparent hover:bg-slate-100'}`}>
+                Insiden
+              </button>
+            </div>
 
-          <div className="flex-1 overflow-y-auto">
-            {/* Petugas Tab */}
-            {activeTab === 'map' && (
-              <div className="p-md space-y-sm">
-                {petugas.map(p => {
-                  const aktif = p.tugasPpj.find(t => t.status === 'in_progress');
-                  const color = petugasColor(p.nipp);
-                  return (
-                    <div key={p.id} className="bg-surface-container-lowest rounded-lg p-sm border border-outline-variant flex items-center gap-sm">
-                      <div className="w-8 h-8 rounded-full flex items-center justify-center font-bold text-sm shrink-0 text-white" style={{ background: color }}>
-                        {p.nama.substring(0, 2).toUpperCase()}
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <p className="font-label-sm font-semibold text-on-surface truncate">{p.nama}</p>
-                        <p className="font-label-sm text-[10px] text-on-surface-variant">{p.nipp}</p>
-                      </div>
-                      <span className={`px-xs py-0.5 rounded-full text-[9px] font-bold uppercase shrink-0 ${aktif ? 'bg-primary-container/20 text-primary' : 'bg-surface-container text-on-surface-variant'}`}>
-                        {aktif ? 'Aktif' : 'Idle'}
-                      </span>
+            {/* List Content */}
+            <div className="flex-1 overflow-y-auto p-4 bg-white relative">
+              
+              {/* Petugas Tab */}
+              {activeTab === 'map' && (
+                <div className="space-y-3">
+                  {petugas.length === 0 && (
+                    <div className="text-center py-8">
+                      <span className="material-symbols-outlined text-slate-300 text-4xl mb-2">person_off</span>
+                      <p className="text-slate-500 text-sm font-medium px-4">Belum ada petugas di bawah kelolaan Anda.</p>
+                      <p className="text-slate-400 text-xs mt-1">Silakan klik Tambah Petugas di bawah.</p>
                     </div>
-                  );
-                })}
-              </div>
-            )}
-
-            {/* Tasks Tab */}
-            {activeTab === 'tasks' && (
-              <div className="flex flex-col h-full">
-                <div className="p-sm border-b border-outline-variant">
-                  <button onClick={() => setShowTaskModal(true)} className="w-full py-sm bg-primary text-on-primary rounded-lg font-label-sm flex items-center justify-center gap-xs hover:opacity-90 transition-opacity">
-                    <span className="material-symbols-outlined text-[16px]">add</span> Buat Tugas Baru
-                  </button>
-                </div>
-                <div className="overflow-y-auto flex-1 p-sm space-y-sm">
-                  {tugas.map(t => (
-                    <div key={t.id} className="bg-surface-container-lowest rounded-lg p-sm border border-outline-variant">
-                      <div className="flex justify-between items-start gap-xs mb-xs">
-                        <p className="font-label-sm font-semibold text-on-surface text-[11px] leading-tight">{t.jalur}</p>
-                        <button onClick={() => handleDeleteTugas(t.id)} className="text-on-surface-variant hover:text-error shrink-0">
-                          <span className="material-symbols-outlined text-[14px]">delete</span>
+                  )}
+                  {petugas.map(p => {
+                    const aktif = p.tugasPpj.find(t => t.status === 'in_progress');
+                    return (
+                      <div 
+                        key={p.id} 
+                        onClick={() => setSelectedPetugasHistory(p)}
+                        className="bg-slate-50 rounded-xl p-3 border border-slate-200 flex items-center gap-3 relative group cursor-pointer hover:border-primary/50 transition-colors"
+                      >
+                        <div className="w-10 h-10 rounded-full flex items-center justify-center font-bold text-sm text-white shadow-inner shrink-0" style={{ background: petugasColor(p.nipp) }}>
+                          {p.nama.substring(0, 2).toUpperCase()}
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="font-bold text-slate-800 truncate text-sm group-hover:text-primary transition-colors">{p.nama}</p>
+                          <p className="text-xs text-slate-500 mt-0.5 font-medium">{p.nipp}</p>
+                        </div>
+                        <div className={`flex items-center gap-1.5 px-2.5 py-1 rounded-md border shrink-0 ${aktif ? 'bg-blue-50 border-blue-200 text-blue-700' : 'bg-white border-slate-200 text-slate-500'}`}>
+                          <div className={`w-1.5 h-1.5 rounded-full ${aktif ? 'bg-blue-500 animate-pulse' : 'bg-slate-400'}`}></div>
+                          <span className="text-[10px] font-bold uppercase tracking-widest">{aktif ? 'Patroli' : 'Standby'}</span>
+                        </div>
+                        {/* Remove button (shows on hover) */}
+                        <button 
+                          onClick={(e) => { e.stopPropagation(); handleRemovePetugas(p.id); }} 
+                          className="absolute -top-2 -right-2 w-7 h-7 bg-white border border-slate-200 rounded-full text-slate-400 hover:text-rose-600 hover:border-rose-300 shadow-sm flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all z-10"
+                        >
+                          <span className="material-symbols-outlined text-[16px]">delete</span>
                         </button>
                       </div>
-                      <p className="font-label-sm text-[10px] text-primary">{t.user?.nama}</p>
-                      <div className="flex items-center justify-between mt-xs">
-                        <span className={`px-xs py-0.5 rounded-full text-[9px] font-bold uppercase border ${STATUS_COLOR[t.status]}`}>{STATUS_LABEL[t.status]}</span>
-                        <span className="font-label-sm text-[10px] text-on-surface-variant">
+                    );
+                  })}
+                </div>
+              )}
+
+              {/* Tasks Tab */}
+              {activeTab === 'tasks' && (
+                <div className="space-y-3">
+                  {tugas.length === 0 && <p className="text-center text-slate-400 text-sm py-4">Belum ada tugas dibuat.</p>}
+                  {tugas.map(t => (
+                    <div key={t.id} className="bg-slate-50 rounded-xl p-4 border border-slate-200">
+                      <div className="flex justify-between items-start gap-2 mb-1">
+                        <p className="font-bold text-slate-800 text-sm leading-snug">{t.jalur}</p>
+                        <button onClick={() => handleDeleteTugas(t.id)} className="text-slate-400 hover:text-rose-600 transition-colors p-1 rounded hover:bg-rose-100 shrink-0">
+                          <span className="material-symbols-outlined text-[16px]">delete</span>
+                        </button>
+                      </div>
+                      <p className="text-xs text-primary font-semibold mb-3">{t.user?.nama}</p>
+                      <div className="flex items-center justify-between border-t border-slate-200 pt-3">
+                        <span className={`px-2 py-1 rounded text-[10px] font-bold uppercase tracking-wider border ${STATUS_COLOR[t.status]}`}>{STATUS_LABEL[t.status]}</span>
+                        <span className="text-xs font-semibold text-slate-500 bg-white border border-slate-200 px-2 py-0.5 rounded">
                           {haversineKm(t.startPointLat, t.startPointLong, t.endPointLat, t.endPointLong)} km
                         </span>
                       </div>
                     </div>
                   ))}
                 </div>
+              )}
+
+              {/* Emergency Tab */}
+              {activeTab === 'emergency' && (
+                <div className="space-y-4">
+                  {emergencies.length === 0 && (
+                    <div className="text-center py-8">
+                      <span className="material-symbols-outlined text-slate-300 text-4xl mb-2">check_circle</span>
+                      <p className="text-slate-500 text-sm font-medium">Semua jalur terpantau aman.</p>
+                    </div>
+                  )}
+                  {emergencies.map(e => (
+                    <button key={e.id} onClick={() => setSelectedEmergency(e)} className="w-full text-left bg-white rounded-xl border border-slate-200 shadow-sm hover:border-rose-300 transition-all group overflow-hidden flex flex-col">
+                      {e.foto && <div className="w-full h-24 overflow-hidden"><img src={e.foto} alt="darurat" className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" /></div>}
+                      <div className="p-3">
+                        <div className="flex justify-between items-start mb-2">
+                          <span className="bg-rose-100 text-rose-700 px-2 py-0.5 rounded text-[10px] font-extrabold uppercase tracking-widest">{JENIS_LABEL[e.jenisTemuan] ?? e.jenisTemuan}</span>
+                          <span className="text-slate-500 text-[10px] font-semibold">{new Date(e.createdAt).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })}</span>
+                        </div>
+                        <p className="font-bold text-slate-800 text-xs mb-1">{e.tracking?.tugas?.user?.nama}</p>
+                        <p className="text-slate-500 text-[10px] font-mono bg-slate-50 border border-slate-100 inline-block px-1.5 py-0.5 rounded">{e.latitude.toFixed(5)}, {e.longitude.toFixed(5)}</p>
+                      </div>
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+            
+            {/* Action Buttons (Docked) */}
+            {activeTab === 'tasks' && (
+              <div className="p-3 border-t border-slate-200 bg-slate-50 shrink-0">
+                <button onClick={() => setShowTaskModal(true)} className="w-full py-2.5 bg-primary text-white rounded-lg text-sm font-bold flex items-center justify-center gap-2 hover:bg-primary/90 shadow-sm transition-all active:scale-[0.98]">
+                  <span className="material-symbols-outlined text-[18px]">add</span> Tugaskan Pemeriksa
+                </button>
               </div>
             )}
-
-            {/* Emergency Tab */}
-            {activeTab === 'emergency' && (
-              <div className="p-sm space-y-sm">
-                {emergencies.length === 0 && <p className="text-center text-on-surface-variant font-body-md py-lg">Tidak ada laporan darurat.</p>}
-                {emergencies.map(e => (
-                  <button key={e.id} onClick={() => setSelectedEmergency(e)} className="w-full text-left bg-surface-container-lowest rounded-lg border border-outline-variant overflow-hidden hover:border-error/40 transition-colors">
-                    {e.foto && <img src={e.foto} alt="foto darurat" className="w-full h-20 object-cover" />}
-                    <div className="p-sm">
-                      <div className="flex items-center justify-between mb-xs">
-                        <span className="bg-error-container/30 text-error font-label-sm text-[10px] px-xs py-0.5 rounded-full uppercase font-bold">{JENIS_LABEL[e.jenisTemuan] ?? e.jenisTemuan}</span>
-                        <span className="text-on-surface-variant font-label-sm text-[10px]">{new Date(e.createdAt).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })}</span>
-                      </div>
-                      <p className="font-label-sm text-[11px] text-on-surface">{e.tracking?.tugas?.user?.nama}</p>
-                      <p className="font-label-sm text-[10px] text-on-surface-variant">{e.latitude.toFixed(5)}, {e.longitude.toFixed(5)}</p>
-                    </div>
-                  </button>
-                ))}
+            {activeTab === 'map' && (
+              <div className="p-3 border-t border-slate-200 bg-slate-50 shrink-0">
+                <button onClick={() => { setShowAddPetugasModal(true); fetchAvailablePetugas(); setSelectedNipps([]); setSearchPetugas(''); }} className="w-full py-2.5 bg-white border border-primary text-primary rounded-lg text-sm font-bold flex items-center justify-center gap-2 hover:bg-primary/5 shadow-sm transition-all active:scale-[0.98]">
+                  <span className="material-symbols-outlined text-[18px]">person_add</span> Tambah Petugas Kelolaan
+                </button>
               </div>
             )}
           </div>
         </aside>
 
-        {/* Map Area */}
-        <main className="flex-1 relative overflow-hidden isolate">
+        {/* Right Area (Map Container) */}
+        <main className="flex-1 bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden flex flex-col relative isolate">
           <AdminMap
             emergencies={mapEmergencies}
             tasks={mapTasks}
@@ -250,55 +354,75 @@ export default function AdminPage() {
 
           {/* Pick Mode Banner */}
           {pickMode && (
-            <div className="absolute top-4 left-1/2 -translate-x-1/2 bg-primary text-on-primary px-lg py-sm rounded-full shadow-lg font-label-sm flex items-center gap-sm z-[1000]">
-              <span className="material-symbols-outlined text-[16px]">my_location</span>
-              Klik peta untuk titik {pickMode === 'start' ? 'AWAL (Hijau)' : 'AKHIR (Merah)'}
-              <button onClick={() => setPickMode(null)} className="ml-sm text-on-primary/70 hover:text-on-primary"><span className="material-symbols-outlined text-[16px]">close</span></button>
+            <div className="absolute top-6 left-1/2 -translate-x-1/2 bg-slate-800 text-white px-5 py-2.5 rounded-full shadow-lg font-label-sm flex items-center gap-3 z-[1000] border border-slate-700">
+              <span className="material-symbols-outlined text-[18px] text-primary">my_location</span>
+              <span className="text-xs font-semibold tracking-wide">Pilih Titik {pickMode === 'start' ? 'AWAL (Hijau)' : 'AKHIR (Merah)'} di Peta</span>
+              <div className="w-px h-4 bg-slate-600 mx-1"></div>
+              <button onClick={() => setPickMode(null)} className="text-slate-400 hover:text-white transition-colors flex items-center"><span className="material-symbols-outlined text-[18px]">close</span></button>
             </div>
           )}
 
-          {/* Map Legend */}
-          <div className="absolute bottom-4 left-4 bg-surface/90 backdrop-blur-sm rounded-xl p-sm shadow-lg text-[10px] font-label-sm z-[1000] space-y-xs">
-            <p className="text-on-surface-variant uppercase font-bold mb-xs">Legend</p>
-            {[['#94a3b8','Pending'],['#005bac','Berlangsung'],['#22c55e','Selesai']].map(([c,l]) => (
-              <div key={l} className="flex items-center gap-xs"><div className="w-4 h-1 rounded" style={{ background: c }} /><span className="text-on-surface">{l}</span></div>
-            ))}
-            <div className="flex items-center gap-xs"><span className="text-error">⚠</span><span className="text-on-surface">Darurat</span></div>
+          {/* Legend */}
+          <div className="absolute bottom-6 left-6 bg-white/95 backdrop-blur-md rounded-xl p-3 shadow-md border border-slate-200 z-[1000]">
+            <p className="text-slate-500 uppercase font-bold text-[9px] tracking-widest mb-2">Legenda Visual</p>
+            <div className="flex flex-col gap-2">
+              {[['#94a3b8','Tugas Pending'],['#005bac','Tugas Aktif'],['#22c55e','Selesai']].map(([c,l]) => (
+                <div key={l} className="flex items-center gap-2">
+                  <div className="w-3 h-3 rounded-sm shadow-sm" style={{ background: c }} />
+                  <span className="text-slate-700 text-[11px] font-semibold">{l}</span>
+                </div>
+              ))}
+              <div className="flex items-center gap-2 mt-1 pt-2 border-t border-slate-100">
+                <span className="text-rose-500 font-bold text-[14px] leading-none w-3 text-center">⚠</span>
+                <span className="text-slate-700 text-[11px] font-semibold">Laporan Darurat</span>
+              </div>
+            </div>
           </div>
-
-          {/* Auto-refresh indicator */}
-          <div className="absolute top-4 right-4 bg-surface/80 backdrop-blur-sm rounded-full px-sm py-xs text-[10px] text-on-surface-variant font-label-sm flex items-center gap-xs z-[1000]">
-            <span className="w-1.5 h-1.5 bg-primary rounded-full animate-pulse" />
-            Auto-refresh 15s
+          
+          {/* Live Indicator */}
+          <div className="absolute top-6 right-6 bg-white/95 backdrop-blur-md rounded-full px-3 py-1.5 shadow-sm border border-slate-200 flex items-center gap-2 z-[1000]">
+            <span className="w-2 h-2 bg-emerald-500 rounded-full animate-pulse" />
+            <span className="text-slate-600 text-[10px] font-bold tracking-widest uppercase">Live Sync</span>
           </div>
         </main>
       </div>
 
-      {/* Emergency Detail Panel */}
+      {/* Emergency Detail Modal */}
       {selectedEmergency && (
-        <div className="fixed inset-0 z-[9999] bg-on-surface/50 backdrop-blur-sm flex items-center justify-center p-md">
-          <div className="bg-surface w-full max-w-sm rounded-2xl shadow-2xl overflow-hidden">
-            <div className="bg-error px-md py-sm flex items-center justify-between">
-              <h3 className="font-h3 text-h3 text-on-error flex items-center gap-sm">
-                <span className="material-symbols-outlined" style={{ fontVariationSettings: "'FILL' 1" }}>warning</span>
-                Laporan Darurat
+        <div className="fixed inset-0 z-[9999] bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-white w-full max-w-lg rounded-2xl shadow-2xl overflow-hidden animate-in fade-in zoom-in-95 duration-200">
+            <div className="bg-rose-600 px-6 py-4 flex items-center justify-between">
+              <h3 className="text-base font-bold text-white flex items-center gap-3 tracking-wide">
+                <span className="material-symbols-outlined text-[20px]">warning</span> DETAIL INSIDEN DARURAT
               </h3>
-              <button onClick={() => setSelectedEmergency(null)} className="text-on-error/80 hover:text-on-error"><span className="material-symbols-outlined">close</span></button>
+              <button onClick={() => setSelectedEmergency(null)} className="text-white/70 hover:text-white transition-colors"><span className="material-symbols-outlined">close</span></button>
             </div>
-            {selectedEmergency.foto && <img src={selectedEmergency.foto} alt="darurat" className="w-full aspect-video object-cover" />}
-            <div className="p-md space-y-sm">
-              <div className="flex justify-between items-center">
-                <span className="bg-error-container text-error px-sm py-xs rounded-full font-label-sm text-[11px] uppercase font-bold">{JENIS_LABEL[selectedEmergency.jenisTemuan] ?? selectedEmergency.jenisTemuan}</span>
-                <span className="font-label-sm text-[11px] text-on-surface-variant">{new Date(selectedEmergency.createdAt).toLocaleString('id-ID')}</span>
+            {selectedEmergency.foto && <div className="w-full h-56 bg-slate-100"><img src={selectedEmergency.foto} alt="darurat" className="w-full h-full object-cover" /></div>}
+            <div className="p-6 space-y-5">
+              <div className="flex justify-between items-center border-b border-slate-100 pb-3">
+                <span className="bg-rose-100 text-rose-700 px-3 py-1 rounded-md text-xs font-extrabold uppercase tracking-widest">{JENIS_LABEL[selectedEmergency.jenisTemuan] ?? selectedEmergency.jenisTemuan}</span>
+                <span className="text-xs font-semibold text-slate-500">{new Date(selectedEmergency.createdAt).toLocaleString('id-ID')}</span>
               </div>
-              {selectedEmergency.deskripsi && <p className="font-body-md text-on-surface">{selectedEmergency.deskripsi}</p>}
-              <div className="bg-surface-container-low rounded-lg p-sm space-y-xs">
-                <p className="font-label-sm text-[10px] text-on-surface-variant uppercase">Petugas</p>
-                <p className="font-body-md text-on-surface">{selectedEmergency.tracking?.tugas?.user?.nama} — {selectedEmergency.tracking?.tugas?.user?.nipp}</p>
-                <p className="font-label-sm text-[10px] text-on-surface-variant uppercase mt-xs">Jalur</p>
-                <p className="font-body-md text-on-surface">{selectedEmergency.tracking?.tugas?.jalur}</p>
-                <p className="font-label-sm text-[10px] text-on-surface-variant uppercase mt-xs">Koordinat GPS</p>
-                <p className="font-body-md text-on-surface font-mono">{selectedEmergency.latitude.toFixed(6)}, {selectedEmergency.longitude.toFixed(6)}</p>
+              {selectedEmergency.deskripsi && (
+                <div className="bg-slate-50 rounded-xl p-4 border border-slate-200">
+                  <p className="text-sm text-slate-700 leading-relaxed font-medium">{selectedEmergency.deskripsi}</p>
+                </div>
+              )}
+              <div className="bg-slate-50 rounded-xl p-4 border border-slate-200 shadow-inner space-y-3">
+                <div className="flex justify-between items-center">
+                  <p className="text-[10px] text-slate-500 uppercase tracking-widest font-bold">Pelapor</p>
+                  <p className="text-sm font-bold text-slate-800">{selectedEmergency.tracking?.tugas?.user?.nama}</p>
+                </div>
+                <div className="flex justify-between items-center">
+                  <p className="text-[10px] text-slate-500 uppercase tracking-widest font-bold">Jalur</p>
+                  <p className="text-sm font-bold text-slate-800 text-right">{selectedEmergency.tracking?.tugas?.jalur}</p>
+                </div>
+                <div className="flex justify-between items-center">
+                  <p className="text-[10px] text-slate-500 uppercase tracking-widest font-bold">GPS</p>
+                  <p className="text-xs font-bold text-slate-700 font-mono bg-white border border-slate-200 px-2 py-0.5 rounded shadow-sm">
+                    {selectedEmergency.latitude.toFixed(6)}, {selectedEmergency.longitude.toFixed(6)}
+                  </p>
+                </div>
               </div>
             </div>
           </div>
@@ -307,69 +431,252 @@ export default function AdminPage() {
 
       {/* Assign Task Modal */}
       {showTaskModal && (
-        <div className="fixed inset-0 z-[9999] bg-on-surface/50 backdrop-blur-sm flex items-center justify-center p-md">
-          <div className="bg-surface w-full max-w-md rounded-2xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh]">
-            <div className="bg-primary px-md py-sm flex items-center justify-between shrink-0">
-              <h3 className="font-h3 text-h3 text-on-primary flex items-center gap-sm"><span className="material-symbols-outlined">add_task</span> Buat Tugas Baru</h3>
-              <button onClick={() => { setShowTaskModal(false); setPickMode(null); }} className="text-on-primary/80 hover:text-on-primary"><span className="material-symbols-outlined">close</span></button>
+        <div className="fixed inset-0 z-[9999] bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-white w-full max-w-xl rounded-2xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh] animate-in fade-in zoom-in-95 duration-200">
+            <div className="bg-slate-800 px-6 py-4 flex items-center justify-between shrink-0">
+              <h3 className="text-base font-bold text-white flex items-center gap-3 tracking-wide"><span className="material-symbols-outlined text-primary text-[20px]">add_task</span> TUGASKAN PETUGAS</h3>
+              <button onClick={() => { setShowTaskModal(false); setPickMode(null); }} className="text-slate-400 hover:text-white transition-colors flex items-center"><span className="material-symbols-outlined">close</span></button>
             </div>
-            <div className="overflow-y-auto p-md space-y-md flex-1">
+            <div className="overflow-y-auto p-6 space-y-5 flex-1 bg-slate-50/50">
               {/* Petugas */}
               <div>
-                <label className="font-label-sm text-label-sm text-on-surface-variant uppercase block mb-xs">Pilih Petugas</label>
-                <select value={form.assignedTo} onChange={e => setForm(f => ({ ...f, assignedTo: e.target.value }))} className="w-full border border-outline-variant rounded-lg p-sm font-body-md text-on-surface bg-surface-container-lowest focus:ring-2 focus:ring-primary outline-none">
-                  <option value="">-- Pilih Petugas --</option>
+                <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest block mb-1.5">Pilih Petugas Pemeriksa</label>
+                <select value={form.assignedTo} onChange={e => setForm(f => ({ ...f, assignedTo: e.target.value }))} className="w-full border border-slate-300 rounded-xl px-4 py-3 text-sm text-slate-800 bg-white focus:ring-2 focus:ring-primary focus:border-primary outline-none shadow-sm font-medium">
+                  <option value="">-- Silakan Pilih Petugas --</option>
                   {petugas.map(p => <option key={p.id} value={p.id}>{p.nama} ({p.nipp})</option>)}
                 </select>
               </div>
 
               {/* Nama Jalur */}
               <div>
-                <label className="font-label-sm text-label-sm text-on-surface-variant uppercase block mb-xs">Nama Jalur</label>
-                <input value={form.jalur} onChange={e => setForm(f => ({ ...f, jalur: e.target.value }))} placeholder="Jalur Utama Jakarta-Bandung" className="w-full border border-outline-variant rounded-lg p-sm font-body-md text-on-surface bg-surface-container-lowest focus:ring-2 focus:ring-primary outline-none" />
+                <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest block mb-1.5">Nama Jalur Inspeksi</label>
+                <input value={form.jalur} onChange={e => setForm(f => ({ ...f, jalur: e.target.value }))} placeholder="Contoh: Jalur Utama Jakarta-Bandung KM 10-20" className="w-full border border-slate-300 rounded-xl px-4 py-3 text-sm text-slate-800 bg-white focus:ring-2 focus:ring-primary focus:border-primary outline-none shadow-sm font-medium" />
               </div>
 
               {/* Tanggal */}
               <div>
-                <label className="font-label-sm text-label-sm text-on-surface-variant uppercase block mb-xs">Tanggal Inspeksi</label>
-                <input type="date" value={form.tanggal} onChange={e => setForm(f => ({ ...f, tanggal: e.target.value }))} className="w-full border border-outline-variant rounded-lg p-sm font-body-md text-on-surface bg-surface-container-lowest focus:ring-2 focus:ring-primary outline-none" />
+                <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest block mb-1.5">Tanggal Inspeksi</label>
+                <input type="date" value={form.tanggal} onChange={e => setForm(f => ({ ...f, tanggal: e.target.value }))} className="w-full border border-slate-300 rounded-xl px-4 py-3 text-sm text-slate-800 bg-white focus:ring-2 focus:ring-primary focus:border-primary outline-none shadow-sm font-medium" />
               </div>
 
               {/* Point Picker */}
-              <div>
-                <label className="font-label-sm text-label-sm text-on-surface-variant uppercase block mb-xs">Titik Jalur — klik tombol lalu klik peta</label>
-                <div className="grid grid-cols-2 gap-sm">
-                  <div className="flex flex-col gap-xs">
-                    <button onClick={() => { setShowTaskModal(false); setPickMode('start'); }} className="py-sm rounded-lg border-2 border-dashed border-primary/40 bg-primary-container/10 text-primary font-label-sm text-[11px] flex items-center justify-center gap-xs hover:bg-primary-container/20 transition-colors">
-                      <span className="material-symbols-outlined text-[14px]">location_on</span>
-                      {form.startPointLat ? '✓ Titik Awal' : 'Set Titik Awal'}
+              <div className="bg-white p-4 border border-slate-200 rounded-xl shadow-sm">
+                <label className="text-[10px] font-bold text-slate-700 uppercase tracking-widest block mb-3 flex items-center gap-1.5">
+                  <span className="material-symbols-outlined text-primary text-[16px]">share_location</span> Titik Lokasi Pengecekan
+                </label>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div className="flex flex-col gap-2.5">
+                    <button onClick={() => { setShowTaskModal(false); setPickMode('start'); }} className={`py-2.5 rounded-lg border-2 border-dashed font-bold text-[10px] uppercase tracking-wider flex items-center justify-center gap-1.5 transition-all ${form.startPointLat ? 'border-emerald-400 bg-emerald-50 text-emerald-700' : 'border-slate-300 bg-slate-50 text-slate-600 hover:border-primary hover:text-primary'}`}>
+                      <span className="material-symbols-outlined text-[16px]">{form.startPointLat ? 'check_circle' : 'location_on'}</span>
+                      {form.startPointLat ? 'Titik Awal Terekam' : 'Set Titik Awal (Peta)'}
                     </button>
-                    <input value={form.startPointName} onChange={e => setForm(f => ({ ...f, startPointName: e.target.value }))} placeholder="Nama stasiun awal" className="w-full border border-outline-variant rounded-lg px-sm py-xs font-body-md text-[11px] text-on-surface bg-surface-container-lowest outline-none focus:ring-1 focus:ring-primary" />
-                    {form.startPointLat && <p className="font-mono text-[9px] text-on-surface-variant">{form.startPointLat}, {form.startPointLong}</p>}
+                    <input value={form.startPointName} onChange={e => setForm(f => ({ ...f, startPointName: e.target.value }))} placeholder="Stasiun/Lokasi Awal" className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm text-slate-800 focus:ring-2 focus:ring-primary outline-none" />
                   </div>
-                  <div className="flex flex-col gap-xs">
-                    <button onClick={() => { setShowTaskModal(false); setPickMode('end'); }} className="py-sm rounded-lg border-2 border-dashed border-error/40 bg-error-container/10 text-error font-label-sm text-[11px] flex items-center justify-center gap-xs hover:bg-error-container/20 transition-colors">
-                      <span className="material-symbols-outlined text-[14px]">location_on</span>
-                      {form.endPointLat ? '✓ Titik Akhir' : 'Set Titik Akhir'}
+                  <div className="flex flex-col gap-2.5">
+                    <button onClick={() => { setShowTaskModal(false); setPickMode('end'); }} className={`py-2.5 rounded-lg border-2 border-dashed font-bold text-[10px] uppercase tracking-wider flex items-center justify-center gap-1.5 transition-all ${form.endPointLat ? 'border-rose-400 bg-rose-50 text-rose-700' : 'border-slate-300 bg-slate-50 text-slate-600 hover:border-primary hover:text-primary'}`}>
+                      <span className="material-symbols-outlined text-[16px]">{form.endPointLat ? 'check_circle' : 'location_on'}</span>
+                      {form.endPointLat ? 'Titik Akhir Terekam' : 'Set Titik Akhir (Peta)'}
                     </button>
-                    <input value={form.endPointName} onChange={e => setForm(f => ({ ...f, endPointName: e.target.value }))} placeholder="Nama stasiun akhir" className="w-full border border-outline-variant rounded-lg px-sm py-xs font-body-md text-[11px] text-on-surface bg-surface-container-lowest outline-none focus:ring-1 focus:ring-primary" />
-                    {form.endPointLat && <p className="font-mono text-[9px] text-on-surface-variant">{form.endPointLat}, {form.endPointLong}</p>}
+                    <input value={form.endPointName} onChange={e => setForm(f => ({ ...f, endPointName: e.target.value }))} placeholder="Stasiun/Lokasi Akhir" className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm text-slate-800 focus:ring-2 focus:ring-primary outline-none" />
                   </div>
                 </div>
                 {form.startPointLat && form.endPointLat && (
-                  <p className="mt-sm text-center font-label-sm text-primary text-[11px]">
-                    Estimasi jarak: <b>{haversineKm(parseFloat(form.startPointLat), parseFloat(form.startPointLong), parseFloat(form.endPointLat), parseFloat(form.endPointLong))} km</b>
-                  </p>
+                  <div className="mt-4 flex items-center justify-between bg-blue-50 py-2.5 px-4 rounded-lg border border-blue-100">
+                    <span className="text-[10px] font-bold text-blue-800 uppercase tracking-widest">Estimasi Jarak</span>
+                    <span className="text-sm font-extrabold text-blue-700">{haversineKm(parseFloat(form.startPointLat), parseFloat(form.startPointLong), parseFloat(form.endPointLat), parseFloat(form.endPointLong))} km</span>
+                  </div>
                 )}
               </div>
             </div>
 
-            <div className="p-md border-t border-outline-variant flex gap-sm shrink-0">
-              <button onClick={() => { setShowTaskModal(false); setPickMode(null); }} className="flex-1 py-sm rounded-xl border border-outline text-on-surface font-label-sm hover:bg-surface-container-low">Batal</button>
-              <button onClick={handleCreateTugas} disabled={submitting} className="flex-[2] py-sm rounded-xl bg-primary text-on-primary font-label-sm flex items-center justify-center gap-sm disabled:opacity-60">
-                <span className="material-symbols-outlined text-[16px]">send</span>
-                {submitting ? 'Menyimpan...' : 'Buat Tugas'}
+            <div className="p-5 border-t border-slate-200 flex gap-3 shrink-0 bg-white">
+              <button onClick={() => { setShowTaskModal(false); setPickMode(null); }} className="flex-1 py-3 rounded-xl border border-slate-300 text-slate-700 font-bold text-sm hover:bg-slate-50 transition-colors uppercase tracking-wider">Batal</button>
+              <button onClick={handleCreateTugas} disabled={submitting} className="flex-[2] py-3 rounded-xl bg-primary text-white font-bold text-sm flex items-center justify-center gap-2 shadow-md shadow-primary/20 hover:bg-primary/90 disabled:opacity-60 transition-all active:scale-[0.98] uppercase tracking-wider">
+                <span className="material-symbols-outlined text-[18px]">send</span>
+                {submitting ? 'Menyimpan...' : 'Simpan & Tugaskan'}
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Add Petugas Modal */}
+      {showAddPetugasModal && (
+        <div className="fixed inset-0 z-[9999] bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-white w-full max-w-md rounded-2xl shadow-2xl overflow-hidden animate-in fade-in zoom-in-95 duration-200 flex flex-col max-h-[85vh]">
+            <div className="bg-slate-800 px-6 py-4 flex items-center justify-between shrink-0">
+              <h3 className="text-base font-bold text-white flex items-center gap-3"><span className="material-symbols-outlined text-primary text-[20px]">person_add</span> TAMBAH PETUGAS</h3>
+              <button onClick={() => setShowAddPetugasModal(false)} className="text-slate-400 hover:text-white transition-colors"><span className="material-symbols-outlined">close</span></button>
+            </div>
+            <div className="p-5 border-b border-slate-100 shrink-0">
+              <div className="relative">
+                <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-slate-400">search</span>
+                <input 
+                  value={searchPetugas} 
+                  onChange={e => setSearchPetugas(e.target.value)} 
+                  placeholder="Cari nama atau NIPP petugas..." 
+                  className="w-full pl-10 pr-4 py-2.5 border border-slate-300 rounded-xl text-sm bg-slate-50 focus:bg-white focus:ring-2 focus:ring-primary focus:border-primary outline-none transition-all"
+                />
+              </div>
+            </div>
+            <div className="flex-1 overflow-y-auto p-2 bg-slate-50/50">
+              {availablePetugas.length === 0 ? (
+                <div className="p-8 text-center text-slate-500 text-sm">Tidak ada petugas yang tersedia.</div>
+              ) : (
+                <div className="space-y-1.5 p-2">
+                  {availablePetugas
+                    .filter(p => p.nama.toLowerCase().includes(searchPetugas.toLowerCase()) || p.nipp.toLowerCase().includes(searchPetugas.toLowerCase()))
+                    .map(p => {
+                      const isSelected = selectedNipps.includes(p.nipp);
+                      return (
+                        <button 
+                          key={p.id}
+                          onClick={() => {
+                            if (isSelected) {
+                              setSelectedNipps(prev => prev.filter(n => n !== p.nipp));
+                            } else {
+                              setSelectedNipps(prev => [...prev, p.nipp]);
+                            }
+                          }}
+                          className={`w-full flex items-center gap-3 p-3 rounded-xl border text-left transition-all ${isSelected ? 'bg-primary-container/10 border-primary shadow-sm' : 'bg-white border-slate-200 hover:border-primary/50 hover:bg-slate-50'}`}
+                        >
+                          <div className="w-10 h-10 rounded-full flex items-center justify-center font-bold text-sm text-white shrink-0" style={{ background: petugasColor(p.nipp) }}>
+                            {p.nama.substring(0, 2).toUpperCase()}
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <p className={`font-bold truncate text-sm ${isSelected ? 'text-primary' : 'text-slate-800'}`}>{p.nama}</p>
+                            <p className="text-xs text-slate-500 font-medium">{p.nipp}</p>
+                          </div>
+                          {isSelected ? (
+                            <span className="material-symbols-outlined text-primary">check_circle</span>
+                          ) : (
+                            <div className="w-5 h-5 rounded-full border-2 border-slate-300"></div>
+                          )}
+                        </button>
+                      );
+                  })}
+                  {availablePetugas.filter(p => p.nama.toLowerCase().includes(searchPetugas.toLowerCase()) || p.nipp.toLowerCase().includes(searchPetugas.toLowerCase())).length === 0 && (
+                    <div className="p-4 text-center text-slate-500 text-sm">Pencarian tidak ditemukan.</div>
+                  )}
+                </div>
+              )}
+            </div>
+            <div className="p-5 border-t border-slate-100 flex gap-3 bg-white shrink-0">
+              <button onClick={() => setShowAddPetugasModal(false)} className="flex-1 py-2.5 rounded-xl border border-slate-300 text-slate-700 font-bold text-sm hover:bg-slate-50 transition-colors uppercase tracking-wider">Batal</button>
+              <button onClick={handleAddPetugas} disabled={addingPetugas || selectedNipps.length === 0} className="flex-[2] py-2.5 rounded-xl bg-primary text-white font-bold text-sm flex items-center justify-center gap-2 shadow-md hover:bg-primary/90 disabled:opacity-60 transition-all active:scale-[0.98] uppercase tracking-wider">
+                {addingPetugas ? 'Menambahkan...' : `Tambahkan (${selectedNipps.length})`}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Riwayat Pekerjaan Modal */}
+      {selectedPetugasHistory && (
+        <div className="fixed inset-0 z-[9999] bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-white w-full max-w-lg rounded-2xl shadow-2xl overflow-hidden animate-in fade-in zoom-in-95 duration-200 flex flex-col max-h-[85vh]">
+            <div className="bg-slate-800 px-6 py-4 flex items-center justify-between shrink-0">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-full flex items-center justify-center font-bold text-sm text-white shadow-inner shrink-0" style={{ background: petugasColor(selectedPetugasHistory.nipp) }}>
+                  {selectedPetugasHistory.nama.substring(0, 2).toUpperCase()}
+                </div>
+                <div>
+                  <h3 className="text-sm font-bold text-white">{selectedPetugasHistory.nama}</h3>
+                  <p className="text-xs text-slate-400">{selectedPetugasHistory.nipp}</p>
+                </div>
+              </div>
+              <button onClick={() => setSelectedPetugasHistory(null)} className="text-slate-400 hover:text-white transition-colors"><span className="material-symbols-outlined">close</span></button>
+            </div>
+            
+            <div className="flex-1 overflow-y-auto p-5 bg-slate-50/50">
+              <h4 className="text-xs font-bold text-slate-500 uppercase tracking-widest mb-4">Riwayat Pekerjaan Tracking</h4>
+              <div className="space-y-3">
+                {tugas.filter(t => t.user.nipp === selectedPetugasHistory.nipp).length === 0 ? (
+                  <div className="text-center py-8">
+                    <span className="material-symbols-outlined text-slate-300 text-4xl mb-2">history</span>
+                    <p className="text-slate-500 text-sm font-medium">Belum ada riwayat pekerjaan.</p>
+                  </div>
+                ) : (
+                  tugas.filter(t => t.user.nipp === selectedPetugasHistory.nipp).map(t => {
+                    const latestTracking = t.tracking?.[0];
+                    const laporanList = latestTracking?.laporan || [];
+                    
+                    return (
+                      <div key={t.id} className="bg-white rounded-xl border border-slate-200 shadow-sm relative overflow-hidden mb-4">
+                        <div className={`absolute top-0 left-0 w-1.5 h-full ${t.status === 'completed' ? 'bg-primary' : t.status === 'in_progress' ? 'bg-blue-500' : 'bg-slate-300'}`}></div>
+                        
+                        <div className="p-4 pl-5 border-b border-slate-100">
+                          <div className="flex justify-between items-start gap-2 mb-1">
+                            <p className="font-bold text-slate-800 text-sm leading-snug">{t.jalur}</p>
+                            <span className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider border shrink-0 ${STATUS_COLOR[t.status]}`}>{STATUS_LABEL[t.status]}</span>
+                          </div>
+                          <p className="text-xs font-semibold text-slate-500 mb-2 flex items-center gap-1">
+                            <span className="material-symbols-outlined text-[14px]">calendar_today</span> 
+                            {new Date(t.tanggal).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' })}
+                          </p>
+                          <div className="flex items-center gap-4 pt-2">
+                            <div className="flex items-center gap-1.5 text-xs text-slate-500">
+                              <span className="material-symbols-outlined text-[16px] text-slate-400">route</span>
+                              <span className="font-semibold">{haversineKm(t.startPointLat, t.startPointLong, t.endPointLat, t.endPointLong)} km</span>
+                            </div>
+                            <div className="flex items-center gap-1.5 text-xs text-slate-500">
+                              <span className="material-symbols-outlined text-[16px] text-slate-400">timer</span>
+                              <span className="font-semibold">{latestTracking?.durasi ? `${Math.floor(latestTracking.durasi / 60)} menit` : '-'}</span>
+                            </div>
+                            <div className="flex items-center gap-1.5 text-xs text-slate-500">
+                              <span className="material-symbols-outlined text-[16px] text-slate-400">flag</span>
+                              <span className="font-semibold">{laporanList.length} laporan</span>
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Detail Laporan Kendala */}
+                        {laporanList.length > 0 && (
+                          <div className="bg-slate-50 p-4 pl-5">
+                            <h5 className="text-xs font-bold text-slate-700 mb-3 flex items-center gap-2">
+                              <span className="material-symbols-outlined text-rose-500 text-[16px]">warning</span> Laporan Kendala
+                            </h5>
+                            <div className="space-y-3">
+                              {laporanList.map((lap, idx) => (
+                                <div key={lap.id} className="bg-white border border-slate-200 rounded-lg overflow-hidden shadow-sm">
+                                  {lap.foto && (
+                                    <div className="w-full h-32 relative">
+                                      <img src={lap.foto} alt={`Foto kendala ${idx + 1}`} className="w-full h-full object-cover" />
+                                    </div>
+                                  )}
+                                  <div className="p-3 flex flex-col gap-2">
+                                    <div className="flex items-center justify-between">
+                                      <span className={`px-2 py-0.5 rounded text-[10px] uppercase font-bold tracking-widest ${JENIS_COLOR[lap.jenisTemuan] ?? 'bg-slate-100 text-slate-700'}`}>
+                                        {JENIS_LABEL[lap.jenisTemuan] ?? lap.jenisTemuan}
+                                      </span>
+                                      <span className="font-medium text-[10px] text-slate-500">
+                                        {new Date(lap.createdAt).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })} WIB
+                                      </span>
+                                    </div>
+                                    {lap.deskripsi && <p className="text-xs text-slate-700">{lap.deskripsi}</p>}
+                                    <div className="flex items-center gap-1 text-[10px] text-slate-500 font-medium">
+                                      <span className="material-symbols-outlined text-[14px]">location_on</span>
+                                      <span>{lap.latitude.toFixed(5)}, {lap.longitude.toFixed(5)}</span>
+                                    </div>
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+                        {laporanList.length === 0 && (
+                          <div className="bg-slate-50 p-3 pl-5 border-t border-slate-100">
+                            <div className="flex items-center gap-2 text-slate-500 text-xs font-medium">
+                              <span className="material-symbols-outlined text-emerald-500 text-[18px]">verified</span>
+                              Tidak ada kendala yang dilaporkan.
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })
+                )}
+              </div>
             </div>
           </div>
         </div>

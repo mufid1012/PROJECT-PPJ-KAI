@@ -224,7 +224,7 @@ export default function LoginPage() {
           {/* Footer Info */}
           <div className="mt-xl pt-xl border-t border-surface-container-highest text-center">
             <p className="font-label-sm text-label-sm text-outline">
-              Protected by KAI Internal Security Protocol © 2026
+              Dilindungi oleh Protokol Keamanan Internal KAI © 2026
 
             </p>
           </div>
