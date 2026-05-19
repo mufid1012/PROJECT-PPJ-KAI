@@ -171,17 +171,10 @@ export default function AdminMap({ emergencies, tasks, onEmergencyClick, onMapCl
       const cached = geometryCacheRef.current.get(cacheKey);
 
       const drawRoute = (segments: [number, number][][]) => {
-        if (!layerGroupRef.current) return;
-        if (segments.length > 0) {
-          segments.forEach(seg => {
-            L.polyline(seg, { color, weight: 5, opacity, dashArray: dash }).addTo(layerGroupRef.current!);
-          });
-        } else {
-          L.polyline(
-            [[task.startPointLat, task.startPointLong], [task.endPointLat, task.endPointLong]],
-            { color, weight: 4, dashArray: '10,7', opacity: opacity * 0.6 }
-          ).addTo(layerGroupRef.current!);
-        }
+        if (!layerGroupRef.current || segments.length === 0) return;
+        segments.forEach(seg => {
+          L.polyline(seg, { color, weight: 5, opacity, dashArray: dash }).addTo(layerGroupRef.current!);
+        });
       };
 
       if (cached) {
@@ -252,12 +245,6 @@ export default function AdminMap({ emergencies, tasks, onEmergencyClick, onMapCl
             segments.forEach(seg => {
               L.polyline(seg, { color: '#005bac', weight: 4, opacity: 0.8 }).addTo(layer);
             });
-          } else {
-            // Fallback straight dashed line
-            L.polyline(
-              [[tempStart.lat, tempStart.lng], [tempEnd.lat, tempEnd.lng]],
-              { color: '#005bac', weight: 4, dashArray: '10,7', opacity: 0.65 }
-            ).addTo(layer);
           }
         })
         .finally(() => setLoadingRoute(false));
