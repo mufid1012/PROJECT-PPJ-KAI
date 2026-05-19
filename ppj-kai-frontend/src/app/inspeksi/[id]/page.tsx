@@ -8,7 +8,7 @@ import api from '../../../lib/api';
 
 const DynamicMap = dynamic(() => import('../../../components/map/DynamicMap'), { ssr: false });
 
-// GPS Hook
+// GPS Hook with improved accuracy and reliability
 function useGPS() {
   const [position, setPosition] = useState<{ lat: number; lng: number; accuracy: number } | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -16,10 +16,30 @@ function useGPS() {
 
   useEffect(() => {
     if (!navigator.geolocation) { setError('GPS tidak didukung browser ini'); return; }
+
+    // Try high accuracy first
     watchRef.current = navigator.geolocation.watchPosition(
-      (pos) => setPosition({ lat: pos.coords.latitude, lng: pos.coords.longitude, accuracy: pos.coords.accuracy }),
-      (err) => setError(err.message),
-      { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 }
+      (pos) => {
+        setError(null);
+        setPosition({ lat: pos.coords.latitude, lng: pos.coords.longitude, accuracy: pos.coords.accuracy });
+      },
+      (err) => {
+        // If high accuracy fails, try with lower accuracy as fallback
+        if (err.code === err.TIMEOUT && watchRef.current !== null) {
+          navigator.geolocation.clearWatch(watchRef.current);
+          watchRef.current = navigator.geolocation.watchPosition(
+            (pos) => {
+              setError(null);
+              setPosition({ lat: pos.coords.latitude, lng: pos.coords.longitude, accuracy: pos.coords.accuracy });
+            },
+            (err2) => setError(err2.message),
+            { enableHighAccuracy: false, timeout: 30000, maximumAge: 10000 }
+          );
+        } else {
+          setError(err.message);
+        }
+      },
+      { enableHighAccuracy: true, timeout: 20000, maximumAge: 5000 }
     );
     return () => { if (watchRef.current !== null) navigator.geolocation.clearWatch(watchRef.current); };
   }, []);
@@ -177,10 +197,14 @@ export default function TrackingPage({ params }: { params: { id: string } }) {
   };
 
   const handleStopTracking = async () => {
-    if (!trackingId || !gpsPos) return;
+    if (!trackingId) return;
+    // Use GPS position, or fallback to last known track point
+    const stopLat = gpsPos?.lat ?? (trackPath.length > 0 ? trackPath[trackPath.length - 1][0] : null);
+    const stopLng = gpsPos?.lng ?? (trackPath.length > 0 ? trackPath[trackPath.length - 1][1] : null);
+    if (stopLat === null || stopLng === null) { alert('Tidak ada posisi GPS yang tersedia.'); return; }
     try {
       setIsStopping(true);
-      await api.post(`/tracking/stop/${trackingId}`, { lat: gpsPos.lat, lng: gpsPos.lng });
+      await api.post(`/tracking/stop/${trackingId}`, { lat: stopLat, lng: stopLng });
       if (timerRef.current) clearInterval(timerRef.current);
       localStorage.removeItem(STORAGE_KEY); // Clear persisted session
       router.push(`/inspeksi/${params.id}/selesai`);
@@ -323,6 +347,14 @@ export default function TrackingPage({ params }: { params: { id: string } }) {
   };
 
   const GEOFENCE_RADIUS = 500; // meters
+
+  // Calculate total distance traveled from trackPath
+  const totalDistanceM = trackPath.reduce((sum, point, i) => {
+    if (i === 0) return 0;
+    return sum + haversineM(trackPath[i - 1][0], trackPath[i - 1][1], point[0], point[1]);
+  }, 0);
+  const totalDistanceKm = (totalDistanceM / 1000).toFixed(2);
+
   const distanceToStart = gpsPos && tugas
     ? haversineM(gpsPos.lat, gpsPos.lng, tugas.startPointLat, tugas.startPointLong)
     : null;
@@ -530,8 +562,8 @@ export default function TrackingPage({ params }: { params: { id: string } }) {
                 </div>
                 <div className="w-px h-8 bg-outline-variant/30" />
                 <div className="flex flex-col items-center">
-                  <div className="text-on-surface-variant font-label-sm uppercase text-[10px] mb-1">Points</div>
-                  <div className="text-on-surface font-h2 font-bold">{trackPath.length}</div>
+                  <div className="text-on-surface-variant font-label-sm uppercase text-[10px] mb-1">Jarak</div>
+                  <div className="text-on-surface font-h2 font-bold">{totalDistanceKm}<span className="text-[12px] font-normal ml-0.5">km</span></div>
                 </div>
                 <div className="w-px h-8 bg-outline-variant/30" />
                 <div className="flex flex-col items-center">
@@ -700,8 +732,8 @@ export default function TrackingPage({ params }: { params: { id: string } }) {
                     <span className="font-h3 text-on-surface font-bold">{formatTime(elapsed)}</span>
                   </div>
                   <div className="flex flex-col items-center">
-                    <span className="font-label-sm text-[10px] text-on-surface-variant uppercase">Titik GPS</span>
-                    <span className="font-h3 text-on-surface font-bold">{trackPath.length}</span>
+                    <span className="font-label-sm text-[10px] text-on-surface-variant uppercase">Jarak</span>
+                    <span className="font-h3 text-on-surface font-bold">{totalDistanceKm}<span className="text-[10px] font-normal ml-0.5">km</span></span>
                   </div>
                   <div className="flex flex-col items-center">
                     <span className="font-label-sm text-[10px] text-on-surface-variant uppercase">Akurasi</span>
