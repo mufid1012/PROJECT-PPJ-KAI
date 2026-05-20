@@ -91,9 +91,9 @@ export const stopTracking = async (req: Request, res: Response) => {
       return res.status(404).json({ success: false, message: 'Tracking session not found' });
     }
 
-    // Calculate duration in minutes
+    // Calculate duration in seconds
     const durasiMs = tracking.startTime ? new Date().getTime() - new Date(tracking.startTime).getTime() : 0;
-    const durasiMenit = Math.round(durasiMs / 60000);
+    const durasiDetik = Math.round(durasiMs / 1000);
 
     await prisma.tracking.update({
       where: { id: tracking.id },
@@ -101,7 +101,7 @@ export const stopTracking = async (req: Request, res: Response) => {
         endTime: new Date(),
         endLat: lat || 0,
         endLong: lng || 0,
-        durasi: durasiMenit,
+        durasi: durasiDetik,
         status: 'completed',
       }
     });

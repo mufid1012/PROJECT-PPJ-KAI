@@ -621,7 +621,17 @@ export default function AdminPage() {
                             </div>
                             <div className="flex items-center gap-1.5 text-xs text-slate-500">
                               <span className="material-symbols-outlined text-[16px] text-slate-400">timer</span>
-                              <span className="font-semibold">{latestTracking?.durasi ? `${Math.floor(latestTracking.durasi / 60)} menit` : '-'}</span>
+                              <span className="font-semibold">{
+                                latestTracking?.durasi
+                                  ? latestTracking.durasi >= 3600
+                                    ? `${Math.floor(latestTracking.durasi / 3600)} jam ${Math.floor((latestTracking.durasi % 3600) / 60)} menit`
+                                    : latestTracking.durasi >= 60
+                                    ? `${Math.floor(latestTracking.durasi / 60)} menit`
+                                    : `${latestTracking.durasi} detik`
+                                  : latestTracking?.startTime && latestTracking?.endTime
+                                  ? `${Math.floor((new Date(latestTracking.endTime).getTime() - new Date(latestTracking.startTime).getTime()) / 60000)} menit`
+                                  : '-'
+                              }</span>
                             </div>
                             <div className="flex items-center gap-1.5 text-xs text-slate-500">
                               <span className="material-symbols-outlined text-[16px] text-slate-400">flag</span>
