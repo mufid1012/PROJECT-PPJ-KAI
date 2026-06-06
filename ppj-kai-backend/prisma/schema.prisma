@@ -37,6 +37,8 @@ model TugasPpj {
   startPointName String?   @map("start_point_name") @db.VarChar(200)
   endPointName   String?   @map("end_point_name") @db.VarChar(200)
   assignedTo     Int       @map("assigned_to")
+  jamMulai       String?   @map("jam_mulai") @db.VarChar(10)
+  jamBerakhir    String?   @map("jam_berakhir") @db.VarChar(10)
   status         String    @default("pending") @db.VarChar(20) // pending | in_progress | completed | cancelled
   user           User      @relation(fields: [assignedTo], references: [id])
   tracking       Tracking[]

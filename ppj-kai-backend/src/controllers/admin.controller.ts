@@ -62,7 +62,7 @@ export const getAllTugas = async (req: Request, res: Response) => {
 // POST /admin/tugas
 export const createTugas = async (req: Request, res: Response) => {
   try {
-    const { jalur, tanggal, startPointLat, startPointLong, endPointLat, endPointLong, startPointName, endPointName, assignedTo } = req.body;
+    const { jalur, tanggal, startPointLat, startPointLong, endPointLat, endPointLong, startPointName, endPointName, assignedTo, jamMulai, jamBerakhir } = req.body;
 
     if (!jalur || !tanggal || !startPointLat || !startPointLong || !endPointLat || !endPointLong || !assignedTo) {
       return res.status(400).json({ success: false, message: 'Field wajib tidak lengkap' });
@@ -79,6 +79,8 @@ export const createTugas = async (req: Request, res: Response) => {
         startPointName: startPointName || '',
         endPointName: endPointName || '',
         assignedTo: parseInt(assignedTo),
+        jamMulai: jamMulai || null,
+        jamBerakhir: jamBerakhir || null,
         status: 'pending',
       },
       include: { user: { select: { nama: true, nipp: true } } }
@@ -121,6 +123,48 @@ export const getAllEmergency = async (req: Request, res: Response) => {
     return res.json({ success: true, data: laporan });
   } catch (error) {
     console.error('Get emergency error:', error);
+    return res.status(500).json({ success: false, message: 'Internal server error' });
+  }
+};
+
+// GET /admin/tracking/active — all currently active tracking sessions
+export const getActiveTrackingAll = async (req: Request, res: Response) => {
+  try {
+    const activeTracking = await prisma.tracking.findMany({
+      where: { status: 'started' },
+      include: {
+        tugas: {
+          include: {
+            user: { select: { id: true, nama: true, nipp: true, foto: true } }
+          }
+        }
+      },
+      orderBy: { startTime: 'desc' },
+    });
+
+    const data = activeTracking.map(t => ({
+      trackingId: t.id,
+      startTime: t.startTime,
+      startLat: t.startLat,
+      startLong: t.startLong,
+      lastLat: t.endLat ?? t.startLat,
+      lastLong: t.endLong ?? t.startLong,
+      tugas: {
+        id: t.tugas.id,
+        jalur: t.tugas.jalur,
+        startPointName: t.tugas.startPointName,
+        endPointName: t.tugas.endPointName,
+        startPointLat: t.tugas.startPointLat,
+        startPointLong: t.tugas.startPointLong,
+        endPointLat: t.tugas.endPointLat,
+        endPointLong: t.tugas.endPointLong,
+      },
+      petugas: t.tugas.user,
+    }));
+
+    return res.json({ success: true, data });
+  } catch (error) {
+    console.error('Get active tracking error:', error);
     return res.status(500).json({ success: false, message: 'Internal server error' });
   }
 };
