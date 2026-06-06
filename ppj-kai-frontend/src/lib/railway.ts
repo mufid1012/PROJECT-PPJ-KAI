@@ -72,7 +72,7 @@ function buildGraph(elements: any[]): Graph {
 function findComponents(graph: Graph): Map<NodeId, number> {
   const componentOf = new Map<NodeId, number>();
   let idx = 0;
-  for (const nodeId of graph.coords.keys()) {
+  for (const nodeId of Array.from(graph.coords.keys())) {
     if (componentOf.has(nodeId)) continue;
     const queue = [nodeId];
     componentOf.set(nodeId, idx);
@@ -99,7 +99,7 @@ const MAX_BRIDGE_DIST = 50; // meters
 function bridgeComponents(graph: Graph): void {
   const componentOf = findComponents(graph);
   const componentNodes = new Map<number, NodeId[]>();
-  for (const [nodeId, comp] of componentOf) {
+  for (const [nodeId, comp] of Array.from(componentOf.entries())) {
     if (!componentNodes.has(comp)) componentNodes.set(comp, []);
     componentNodes.get(comp)!.push(nodeId);
   }
@@ -143,7 +143,7 @@ function bridgeComponents(graph: Graph): void {
 function nearestNode(graph: Graph, lat: number, lng: number): NodeId | null {
   let minDist = Infinity;
   let nearest: NodeId | null = null;
-  for (const [id, [nlat, nlng]] of graph.coords) {
+  for (const [id, [nlat, nlng]] of Array.from(graph.coords.entries())) {
     const d = haversineM(lat, lng, nlat, nlng);
     if (d < minDist) { minDist = d; nearest = id; }
   }
@@ -155,7 +155,7 @@ function dijkstra(graph: Graph, startId: NodeId, endId: NodeId): [number, number
   const prev = new Map<NodeId, NodeId | null>();
   const visited = new Set<NodeId>();
 
-  for (const id of graph.coords.keys()) dist.set(id, Infinity);
+  for (const id of Array.from(graph.coords.keys())) dist.set(id, Infinity);
   dist.set(startId, 0);
   prev.set(startId, null);
 

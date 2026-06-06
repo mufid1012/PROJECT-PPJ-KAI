@@ -140,12 +140,8 @@ export const getAllTugas = async (req: AuthRequest, res: Response) => {
 // POST /admin/tugas
 export const createTugas = async (req: AuthRequest, res: Response) => {
   try {
-<<<<<<< HEAD
-    const { jalur, tanggal, startPointLat, startPointLong, endPointLat, endPointLong, startPointName, endPointName, assignedTo, jamMulai, jamBerakhir } = req.body;
-=======
     const adminId = req.user!.id;
-    const { jalur, tanggal, startPointLat, startPointLong, endPointLat, endPointLong, startPointName, endPointName, assignedTo } = req.body;
->>>>>>> aa78dfbd3e0a026744f97aaacf7b048297f5e53d
+    const { jalur, tanggal, startPointLat, startPointLong, endPointLat, endPointLong, startPointName, endPointName, assignedTo, jamMulai, jamBerakhir } = req.body;
 
     if (!jalur || !tanggal || !startPointLat || !startPointLong || !endPointLat || !endPointLong || !assignedTo) {
       return res.status(400).json({ success: false, message: 'Field wajib tidak lengkap' });
@@ -191,12 +187,12 @@ export const deleteTugas = async (req: AuthRequest, res: Response) => {
     
     // Check if task belongs to a managed user
     const tugas = await prisma.tugasPpj.findFirst({
-      where: { id: parseInt(id), user: { managerId: adminId } }
+      where: { id: parseInt(id as string), user: { managerId: adminId } }
     });
     
     if (!tugas) return res.status(403).json({ success: false, message: 'Tugas tidak ditemukan atau tidak diizinkan' });
 
-    await prisma.tugasPpj.delete({ where: { id: parseInt(id) } });
+    await prisma.tugasPpj.delete({ where: { id: parseInt(id as string) } });
     return res.json({ success: true, message: 'Tugas dihapus' });
   } catch (error) {
     console.error('Delete tugas error:', error);

@@ -9,6 +9,9 @@ export const requireAuth = (req: Request, res: Response, next: NextFunction) => 
   }
 
   const token = authHeader.split(' ')[1];
+  if (!token) {
+    return res.status(401).json({ success: false, message: 'Authentication required' });
+  }
   const decoded = verifyToken(token);
 
   if (!decoded) {

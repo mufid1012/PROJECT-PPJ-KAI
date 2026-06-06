@@ -1,10 +1,6 @@
 import { Router } from 'express';
 import { requireAuth, requireAdmin } from '../middleware/auth.middleware';
-<<<<<<< HEAD
-import { getStats, getAllPetugas, getAllTugas, createTugas, deleteTugas, getAllEmergency, getActiveTrackingAll } from '../controllers/admin.controller';
-=======
-import { getStats, getAllPetugas, getAvailablePetugas, addPetugasToManager, removePetugasFromManager, getAllTugas, createTugas, deleteTugas, getAllEmergency } from '../controllers/admin.controller';
->>>>>>> aa78dfbd3e0a026744f97aaacf7b048297f5e53d
+import { getStats, getAllPetugas, getAvailablePetugas, addPetugasToManager, removePetugasFromManager, getAllTugas, createTugas, deleteTugas, getAllEmergency, getActiveTrackingAll } from '../controllers/admin.controller';
 
 const router = Router();
 

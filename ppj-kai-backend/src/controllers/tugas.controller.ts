@@ -29,7 +29,7 @@ export const getTugasById = async (req: Request, res: Response) => {
     const userId = (req as any).user.id;
 
     const tugas = await prisma.tugasPpj.findFirst({
-      where: { id: parseInt(id), assignedTo: userId },
+      where: { id: parseInt(id as string), assignedTo: userId },
       include: {
         tracking: {
           orderBy: { createdAt: 'desc' },

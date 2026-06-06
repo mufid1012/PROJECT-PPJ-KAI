@@ -3,7 +3,7 @@ import prisma from '../config/database';
 
 export const getActiveTracking = async (req: Request, res: Response) => {
   try {
-    const tugasId = parseInt(req.params.tugasId);
+    const tugasId = parseInt(req.params.tugasId as string);
     const tracking = await prisma.tracking.findFirst({
       where: { tugasId, status: { not: 'stopped' } },
       orderBy: { startTime: 'desc' },
@@ -21,7 +21,7 @@ export const startTracking = async (req: Request, res: Response) => {
     const { lat, lng } = req.body;
 
     const tugas = await prisma.tugasPpj.findUnique({
-      where: { id: parseInt(tugasId) }
+      where: { id: parseInt(tugasId as string) }
     });
 
     if (!tugas) {
@@ -58,7 +58,7 @@ export const updateTracking = async (req: Request, res: Response) => {
     const { lat, lng } = req.body;
 
     const tracking = await prisma.tracking.findUnique({
-      where: { id: parseInt(id) }
+      where: { id: parseInt(id as string) }
     });
 
     if (!tracking) {
@@ -84,7 +84,7 @@ export const stopTracking = async (req: Request, res: Response) => {
     const { lat, lng } = req.body;
 
     const tracking = await prisma.tracking.findUnique({
-      where: { id: parseInt(id) }
+      where: { id: parseInt(id as string) }
     });
 
     if (!tracking) {

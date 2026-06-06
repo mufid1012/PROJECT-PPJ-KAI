@@ -142,7 +142,7 @@ export const checkNipp = async (req: Request, res: Response) => {
     }
 
     const user = await prisma.user.findUnique({
-      where: { nipp },
+      where: { nipp: nipp as string },
       select: { nama: true, role: true }
     });
 
