@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 
-const PUBLIC_ROUTES = ['/login', '/register'];
+const PUBLIC_ROUTES = ['/login', '/register', '/guest'];
 const ADMIN_ROUTES = ['/admin'];
 const PETUGAS_ROUTES = ['/dashboard', '/inspeksi', '/riwayat', '/profile'];
 
@@ -29,16 +29,16 @@ export default function AuthGuard({ children }: { children: React.ReactNode }) {
         router.replace('/login');
         return;
       }
-    } else if (isPublic) {
-      // Already logged in — redirect away from login
-      router.replace(role === 'admin' ? '/admin' : '/dashboard');
+    } else if (isPublic && pathname !== '/guest') {
+      // Already logged in — redirect away from login/register
+      router.replace(role === 'admin' || role === 'qc' ? '/admin' : '/dashboard');
       return;
-    } else if (isAdminRoute && role !== 'admin') {
+    } else if (isAdminRoute && role !== 'admin' && role !== 'qc') {
       // Petugas trying to access admin
       router.replace('/dashboard');
       return;
-    } else if (isPetugasRoute && role === 'admin') {
-      // Admin trying to access petugas routes
+    } else if (isPetugasRoute && (role === 'admin' || role === 'qc')) {
+      // Admin or QC trying to access petugas routes
       router.replace('/admin');
       return;
     }

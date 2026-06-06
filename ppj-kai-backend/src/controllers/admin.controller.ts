@@ -9,14 +9,61 @@ interface AuthRequest extends Request {
 // GET /admin/stats
 export const getStats = async (req: AuthRequest, res: Response) => {
   try {
-    const adminId = req.user!.id;
-    const [totalPetugas, tugasAktif, tugasSelesai, laporanDarurat] = await Promise.all([
-      prisma.user.count({ where: { role: 'petugas', managerId: adminId } }),
-      prisma.tugasPpj.count({ where: { status: { in: ['pending', 'in_progress'] }, user: { managerId: adminId } } }),
-      prisma.tugasPpj.count({ where: { status: 'completed', user: { managerId: adminId } } }),
-      prisma.laporan.count({ where: { jenisTemuan: { in: ['emergency', 'berat'] }, tracking: { tugas: { user: { managerId: adminId } } } } }),
-    ]);
-    return res.json({ success: true, data: { totalPetugas, tugasAktif, tugasSelesai, laporanDarurat } });
+    const userId = req.user!.id;
+    const user = await prisma.user.findUnique({ where: { id: userId } });
+    if (!user) return res.status(404).json({ success: false, message: 'User tidak ditemukan' });
+
+    if (user.role === 'admin') {
+      const [totalPetugas, tugasAktif, tugasSelesai, laporanDarurat] = await Promise.all([
+        prisma.user.count({ where: { role: 'petugas', managerId: userId } }),
+        prisma.tugasPpj.count({ where: { status: { in: ['pending', 'in_progress'] }, user: { managerId: userId } } }),
+        prisma.tugasPpj.count({ where: { status: 'completed', user: { managerId: userId } } }),
+        prisma.laporan.count({ where: { jenisTemuan: { in: ['emergency', 'berat'] }, tracking: { tugas: { user: { managerId: userId } } } } }),
+      ]);
+      return res.json({ success: true, data: { totalPetugas, tugasAktif, tugasSelesai, laporanDarurat } });
+    } else if (user.role === 'qc') {
+      const regions = user.workArea ? user.workArea.split(',').map(s => s.trim()).filter(Boolean) : [];
+      if (regions.length === 0) {
+        return res.json({ success: true, data: { totalPetugas: 0, tugasAktif: 0, tugasSelesai: 0, laporanDarurat: 0 } });
+      }
+
+      const regionFilter = {
+        OR: regions.map(r => ({ jalur: { contains: r } }))
+      };
+
+      const [totalPetugas, tugasAktif, tugasSelesai, laporanDarurat] = await Promise.all([
+        prisma.user.count({
+          where: {
+            role: 'petugas',
+            OR: [
+              { tugasPpj: { some: regionFilter } },
+              { OR: regions.map(r => ({ workArea: { contains: r } })) }
+            ]
+          }
+        }),
+        prisma.tugasPpj.count({
+          where: {
+            status: { in: ['pending', 'in_progress'] },
+            ...regionFilter
+          }
+        }),
+        prisma.tugasPpj.count({
+          where: {
+            status: 'completed',
+            ...regionFilter
+          }
+        }),
+        prisma.laporan.count({
+          where: {
+            jenisTemuan: { in: ['emergency', 'berat'] },
+            tracking: { tugas: regionFilter }
+          }
+        }),
+      ]);
+      return res.json({ success: true, data: { totalPetugas, tugasAktif, tugasSelesai, laporanDarurat } });
+    } else {
+      return res.status(403).json({ success: false, message: 'Akses ditolak' });
+    }
   } catch (error) {
     console.error('Admin stats error:', error);
     return res.status(500).json({ success: false, message: 'Internal server error' });
@@ -26,19 +73,57 @@ export const getStats = async (req: AuthRequest, res: Response) => {
 // GET /admin/petugas
 export const getAllPetugas = async (req: AuthRequest, res: Response) => {
   try {
-    const adminId = req.user!.id;
-    const petugas = await prisma.user.findMany({
-      where: { role: 'petugas', managerId: adminId },
-      select: {
-        id: true, nipp: true, nama: true, foto: true,
-        tugasPpj: {
-          where: { status: { in: ['pending', 'in_progress'] } },
-          select: { id: true, jalur: true, status: true }
-        }
-      },
-      orderBy: { nama: 'asc' },
-    });
-    return res.json({ success: true, data: petugas });
+    const userId = req.user!.id;
+    const user = await prisma.user.findUnique({ where: { id: userId } });
+    if (!user) return res.status(404).json({ success: false, message: 'User tidak ditemukan' });
+
+    if (user.role === 'admin') {
+      const petugas = await prisma.user.findMany({
+        where: { role: 'petugas', managerId: userId },
+        select: {
+          id: true, nipp: true, nama: true, foto: true,
+          tugasPpj: {
+            where: { status: { in: ['pending', 'in_progress'] } },
+            select: { id: true, jalur: true, status: true }
+          }
+        },
+        orderBy: { nama: 'asc' },
+      });
+      return res.json({ success: true, data: petugas });
+    } else if (user.role === 'qc') {
+      const regions = user.workArea ? user.workArea.split(',').map(s => s.trim()).filter(Boolean) : [];
+      if (regions.length === 0) {
+        return res.json({ success: true, data: [] });
+      }
+
+      const regionFilter = {
+        OR: regions.map(r => ({ jalur: { contains: r } }))
+      };
+
+      const petugas = await prisma.user.findMany({
+        where: {
+          role: 'petugas',
+          OR: [
+            { tugasPpj: { some: regionFilter } },
+            { OR: regions.map(r => ({ workArea: { contains: r } })) }
+          ]
+        },
+        select: {
+          id: true, nipp: true, nama: true, foto: true,
+          tugasPpj: {
+            where: {
+              status: { in: ['pending', 'in_progress'] },
+              ...regionFilter
+            },
+            select: { id: true, jalur: true, status: true }
+          }
+        },
+        orderBy: { nama: 'asc' },
+      });
+      return res.json({ success: true, data: petugas });
+    } else {
+      return res.status(403).json({ success: false, message: 'Akses ditolak' });
+    }
   } catch (error) {
     console.error('Get petugas error:', error);
     return res.status(500).json({ success: false, message: 'Internal server error' });
@@ -117,9 +202,27 @@ export const removePetugasFromManager = async (req: AuthRequest, res: Response) 
 // GET /admin/tugas
 export const getAllTugas = async (req: AuthRequest, res: Response) => {
   try {
-    const adminId = req.user!.id;
+    const userId = req.user!.id;
+    const user = await prisma.user.findUnique({ where: { id: userId } });
+    if (!user) return res.status(404).json({ success: false, message: 'User tidak ditemukan' });
+
+    let whereClause: any = {};
+    if (user.role === 'admin') {
+      whereClause = { user: { managerId: userId } };
+    } else if (user.role === 'qc') {
+      const regions = user.workArea ? user.workArea.split(',').map(s => s.trim()).filter(Boolean) : [];
+      if (regions.length === 0) {
+        return res.json({ success: true, data: [] });
+      }
+      whereClause = {
+        OR: regions.map(r => ({ jalur: { contains: r } }))
+      };
+    } else {
+      return res.status(403).json({ success: false, message: 'Akses ditolak' });
+    }
+
     const tugas = await prisma.tugasPpj.findMany({
-      where: { user: { managerId: adminId } },
+      where: whereClause,
       include: {
         user: { select: { id: true, nama: true, nipp: true } },
         tracking: {
@@ -203,9 +306,31 @@ export const deleteTugas = async (req: AuthRequest, res: Response) => {
 // GET /admin/emergency
 export const getAllEmergency = async (req: AuthRequest, res: Response) => {
   try {
-    const adminId = req.user!.id;
+    const userId = req.user!.id;
+    const user = await prisma.user.findUnique({ where: { id: userId } });
+    if (!user) return res.status(404).json({ success: false, message: 'User tidak ditemukan' });
+
+    let whereClause: any = {};
+    if (user.role === 'admin') {
+      whereClause = { tracking: { tugas: { user: { managerId: userId } } } };
+    } else if (user.role === 'qc') {
+      const regions = user.workArea ? user.workArea.split(',').map(s => s.trim()).filter(Boolean) : [];
+      if (regions.length === 0) {
+        return res.json({ success: true, data: [] });
+      }
+      whereClause = {
+        tracking: {
+          tugas: {
+            OR: regions.map(r => ({ jalur: { contains: r } }))
+          }
+        }
+      };
+    } else {
+      return res.status(403).json({ success: false, message: 'Akses ditolak' });
+    }
+
     const laporan = await prisma.laporan.findMany({
-      where: { tracking: { tugas: { user: { managerId: adminId } } } },
+      where: whereClause,
       orderBy: { createdAt: 'desc' },
       include: {
         tracking: {
@@ -227,8 +352,34 @@ export const getAllEmergency = async (req: AuthRequest, res: Response) => {
 // GET /admin/tracking/active — all currently active tracking sessions
 export const getActiveTrackingAll = async (req: Request, res: Response) => {
   try {
+    const authReq = req as AuthRequest;
+    const userId = authReq.user!.id;
+    const user = await prisma.user.findUnique({ where: { id: userId } });
+    if (!user) return res.status(404).json({ success: false, message: 'User tidak ditemukan' });
+
+    let whereClause: any = { status: 'started' };
+    if (user.role === 'admin') {
+      whereClause = {
+        status: 'started',
+        tugas: { user: { managerId: userId } }
+      };
+    } else if (user.role === 'qc') {
+      const regions = user.workArea ? user.workArea.split(',').map(s => s.trim()).filter(Boolean) : [];
+      if (regions.length === 0) {
+        return res.json({ success: true, data: [] });
+      }
+      whereClause = {
+        status: 'started',
+        tugas: {
+          OR: regions.map(r => ({ jalur: { contains: r } }))
+        }
+      };
+    } else {
+      return res.status(403).json({ success: false, message: 'Akses ditolak' });
+    }
+
     const activeTracking = await prisma.tracking.findMany({
-      where: { status: 'started' },
+      where: whereClause,
       include: {
         tugas: {
           include: {

@@ -138,7 +138,7 @@ const JENIS_COLOR: Record<string, string> = {
 
 export default function AdminPage() {
   const router = useRouter();
-  const [user, setUser] = useState<{ nama: string } | null>(null);
+  const [user, setUser] = useState<{ nama: string; role: string; workArea?: string } | null>(null);
   const [stats, setStats] = useState<Stats | null>(null);
   const [petugas, setPetugas] = useState<Petugas[]>([]);
   const [tugas, setTugas] = useState<Tugas[]>([]);
@@ -337,23 +337,25 @@ export default function AdminPage() {
   return (
     <div className="h-screen flex flex-col bg-background overflow-hidden">
       {/* ===== HEADER ===== */}
-      <header className="h-[60px] bg-surface border-b border-outline-variant flex items-center justify-between px-lg shrink-0 z-50">
+      <header className={`h-[60px] bg-surface border-b-2 ${user?.role === 'qc' ? 'border-emerald-600' : 'border-outline-variant'} flex items-center justify-between px-lg shrink-0 z-50`}>
         <div className="flex items-center gap-md">
           <img src="/logo-kai.png" alt="KAI Logo" className="h-9 w-auto object-contain" />
           <div>
             <h1 className="font-h3 text-[18px] font-bold text-primary leading-tight">RailTrack PPJ</h1>
-            <p className="font-label-sm text-[9px] text-on-surface-variant uppercase tracking-widest">Panel Administrasi</p>
+            <p className="font-label-sm text-[9px] text-on-surface-variant uppercase tracking-widest">
+              {user?.role === 'qc' ? 'Panel QC' : 'Panel Administrasi'}
+            </p>
           </div>
         </div>
         <div className="flex items-center gap-md">
           {activeTrackings.length > 0 && (
-            <button onClick={() => setSidebarPage('view')} className="flex items-center gap-xs bg-primary-container/20 text-primary px-sm py-xs rounded-full font-label-sm text-[11px] hover:bg-primary-container/30 transition-colors">
-              <span className="w-2 h-2 bg-primary rounded-full animate-pulse" />
+            <button onClick={() => setSidebarPage('view')} className={`flex items-center gap-xs ${user?.role === 'qc' ? 'bg-emerald-500/10 text-emerald-700 hover:bg-emerald-500/20' : 'bg-primary-container/20 text-primary hover:bg-primary-container/30'} px-sm py-xs rounded-full font-label-sm text-[11px] transition-colors`}>
+              <span className={`w-2 h-2 ${user?.role === 'qc' ? 'bg-emerald-500' : 'bg-primary'} rounded-full animate-pulse`} />
               {activeTrackings.length} Petugas Aktif
             </button>
           )}
           <div className="flex items-center gap-sm bg-surface-container rounded-full px-sm py-xs">
-            <div className="w-7 h-7 rounded-full bg-primary flex items-center justify-center">
+            <div className={`w-7 h-7 rounded-full ${user?.role === 'qc' ? 'bg-emerald-700' : 'bg-primary'} flex items-center justify-center`}>
               <span className="material-symbols-outlined text-[14px] text-on-primary">person</span>
             </div>
             <span className="font-label-sm text-on-surface hidden sm:block">{user?.nama}</span>
@@ -369,23 +371,39 @@ export default function AdminPage() {
         <nav className="w-[72px] bg-surface border-r border-outline-variant flex flex-col items-center py-md gap-xs shrink-0">
           {navItems.map(item => (
             <button key={item.key} onClick={() => setSidebarPage(item.key)}
-              className={`w-14 h-14 rounded-2xl flex flex-col items-center justify-center gap-0.5 transition-all duration-200 ${sidebarPage === item.key ? 'bg-primary-container text-on-primary-container shadow-sm' : 'text-on-surface-variant hover:bg-surface-container-low'}`}
+              className={`w-14 h-14 rounded-2xl flex flex-col items-center justify-center gap-0.5 transition-all duration-200 ${
+                sidebarPage === item.key
+                  ? user?.role === 'qc'
+                    ? 'bg-emerald-100 text-emerald-800 shadow-sm border border-emerald-200'
+                    : 'bg-primary-container text-on-primary-container shadow-sm'
+                  : 'text-on-surface-variant hover:bg-surface-container-low'
+              }`}
               title={item.label}>
               <span className="material-symbols-outlined text-[22px]" style={sidebarPage === item.key ? { fontVariationSettings: "'FILL' 1" } : {}}>{item.icon}</span>
               <span className="font-label-sm text-[9px] leading-none">{item.label}</span>
             </button>
           ))}
+
+          <div className="flex-1" />
+
+          {/* Guest Link */}
+          <button onClick={() => router.push('/guest')}
+            className="w-14 h-14 rounded-2xl flex flex-col items-center justify-center gap-0.5 text-on-surface-variant hover:bg-surface-container-low transition-all mb-xs"
+            title="Lihat sebagai Guest">
+            <span className="material-symbols-outlined text-[22px]">visibility</span>
+            <span className="font-label-sm text-[9px] leading-none">Guest</span>
+          </button>
         </nav>
 
         {/* ===== DASHBOARD ===== */}
         {sidebarPage === 'dashboard' && (
           <main className="flex-1 overflow-y-auto bg-[#f0f2f8]">
             {/* Welcome + Quick Stats Banner */}
-            <div className="bg-gradient-to-r from-[#003366] via-[#004a8f] to-[#005bac] px-xl py-lg">
+            <div className={`px-xl py-lg bg-gradient-to-r ${user?.role === 'qc' ? 'from-[#0d5245] via-[#137d69] to-[#1aa389]' : 'from-[#003366] via-[#004a8f] to-[#005bac]'}`}>
               <div className="flex items-center justify-between mb-md">
                 <div>
                   <h2 className="text-white/60 font-label-sm text-[11px] uppercase tracking-widest">Selamat Datang</h2>
-                  <p className="text-white font-h2 text-h2 font-bold">{user?.nama || 'Admin'}</p>
+                  <p className="text-white font-h2 text-h2 font-bold">{user?.nama || (user?.role === 'qc' ? 'Quality Control' : 'Admin')}</p>
                 </div>
                 <div className="text-white/60 text-right font-label-sm text-[11px]">
                   <p>{new Date().toLocaleDateString('id-ID', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}</p>
@@ -396,9 +414,9 @@ export default function AdminPage() {
               {/* Stats Cards */}
               <div className="grid grid-cols-2 lg:grid-cols-4 gap-sm mt-md">
                 {[
-                  { label: 'Total Petugas', value: stats?.totalPetugas ?? 0, icon: 'group', gradient: 'from-blue-500/20 to-blue-600/10', iconBg: 'bg-blue-500/30' },
+                  { label: 'Total Petugas', value: stats?.totalPetugas ?? 0, icon: 'group', gradient: user?.role === 'qc' ? 'from-emerald-500/20 to-emerald-600/10' : 'from-blue-500/20 to-blue-600/10', iconBg: user?.role === 'qc' ? 'bg-emerald-500/30' : 'bg-blue-500/30' },
                   { label: 'Tugas Aktif', value: stats?.tugasAktif ?? 0, icon: 'pending_actions', gradient: 'from-amber-500/20 to-amber-600/10', iconBg: 'bg-amber-500/30' },
-                  { label: 'Tugas Selesai', value: stats?.tugasSelesai ?? 0, icon: 'check_circle', gradient: 'from-emerald-500/20 to-emerald-600/10', iconBg: 'bg-emerald-500/30' },
+                  { label: 'Tugas Selesai', value: stats?.tugasSelesai ?? 0, icon: 'check_circle', gradient: user?.role === 'qc' ? 'from-teal-500/20 to-teal-600/10' : 'from-emerald-500/20 to-emerald-600/10', iconBg: user?.role === 'qc' ? 'bg-teal-500/30' : 'bg-emerald-500/30' },
                   { label: 'Laporan Darurat', value: stats?.laporanDarurat ?? 0, icon: 'emergency', gradient: 'from-red-500/20 to-red-600/10', iconBg: 'bg-red-500/30' },
                 ].map(s => (
                   <div key={s.label} className={`bg-gradient-to-br ${s.gradient} bg-white/10 backdrop-blur-md rounded-2xl p-md border border-white/10`}>
@@ -425,7 +443,9 @@ export default function AdminPage() {
                   <button key={tab.key} onClick={() => setDashboardTab(tab.key)}
                     className={`px-lg py-sm rounded-xl font-label-sm text-[12px] flex items-center gap-xs transition-all duration-200 ${
                       dashboardTab === tab.key
-                        ? 'bg-primary text-on-primary shadow-md shadow-primary/20'
+                        ? user?.role === 'qc'
+                          ? 'bg-emerald-700 text-white shadow-md shadow-emerald-700/20'
+                          : 'bg-primary text-on-primary shadow-md shadow-primary/20'
                         : 'bg-white text-on-surface-variant hover:bg-surface-container border border-outline-variant/50'
                     }`}>
                     <span className="material-symbols-outlined text-[16px]">{tab.icon}</span>
@@ -435,12 +455,12 @@ export default function AdminPage() {
                 ))}
               </div>
 
-              {dashboardTab === 'ppj' && (
+              {dashboardTab === 'ppj' && user?.role !== 'qc' && (
                 <button onClick={() => setShowTaskModal(true)} className="px-lg py-sm bg-primary text-on-primary rounded-xl font-label-sm text-[12px] flex items-center gap-xs hover:shadow-md hover:shadow-primary/20 transition-all active:scale-95">
                   <span className="material-symbols-outlined text-[16px]">add_circle</span> Buat Tugas Baru
                 </button>
               )}
-              {dashboardTab === 'petugas' && (
+              {dashboardTab === 'petugas' && user?.role !== 'qc' && (
                 <button onClick={() => { setShowAddPetugasModal(true); fetchAvailablePetugas(); setSelectedNipps([]); setSearchPetugas(''); }} className="px-lg py-sm bg-primary text-on-primary rounded-xl font-label-sm text-[12px] flex items-center gap-xs hover:shadow-md hover:shadow-primary/20 transition-all active:scale-95">
                   <span className="material-symbols-outlined text-[16px]">person_add</span> Tambah Petugas
                 </button>
@@ -548,9 +568,11 @@ export default function AdminPage() {
                               </span>
                             </td>
                             <td className="px-md py-sm text-right">
-                              <button onClick={() => handleDeleteTugas(t.id)} className="opacity-0 group-hover:opacity-100 text-on-surface-variant hover:text-error transition-all w-8 h-8 rounded-lg hover:bg-error-container/20 flex items-center justify-center" title="Hapus">
-                                <span className="material-symbols-outlined text-[16px]">delete</span>
-                              </button>
+                              {user?.role !== 'qc' && (
+                                <button onClick={() => handleDeleteTugas(t.id)} className="opacity-0 group-hover:opacity-100 text-on-surface-variant hover:text-error transition-all w-8 h-8 rounded-lg hover:bg-error-container/20 flex items-center justify-center" title="Hapus">
+                                  <span className="material-symbols-outlined text-[16px]">delete</span>
+                                </button>
+                              )}
                             </td>
                           </tr>
                         ))}
@@ -568,7 +590,7 @@ export default function AdminPage() {
                     const totalTasks = p.tugasPpj.length;
                     const color = petugasColor(p.nipp);
                     return (
-                      <div key={p.id} className="bg-white rounded-2xl border border-outline-variant/30 shadow-sm overflow-hidden hover:shadow-md transition-all group">
+                      <div key={p.id} onClick={() => setSelectedPetugasHistory(p)} className="bg-white rounded-2xl border border-outline-variant/30 shadow-sm overflow-hidden hover:shadow-md transition-all group cursor-pointer">
                         <div className="h-2" style={{ background: color }} />
                         <div className="p-md">
                           <div className="flex items-center gap-sm mb-md">
@@ -582,10 +604,24 @@ export default function AdminPage() {
                           </div>
                           <div className="flex items-center justify-between">
                             <span className="font-label-sm text-[10px] text-on-surface-variant">{totalTasks} tugas</span>
-                            <span className={`inline-flex items-center gap-xs px-sm py-0.5 rounded-full text-[9px] font-bold uppercase ${aktif ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' : 'bg-surface-container text-on-surface-variant border border-outline-variant/50'}`}>
-                              <span className={`w-1.5 h-1.5 rounded-full ${aktif ? 'bg-emerald-500 animate-pulse' : 'bg-outline'}`} />
-                              {aktif ? 'Aktif' : 'Idle'}
-                            </span>
+                            <div className="flex items-center gap-sm">
+                              {user?.role !== 'qc' && (
+                                <button
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleRemovePetugas(p.id);
+                                  }}
+                                  className="opacity-0 group-hover:opacity-100 text-on-surface-variant hover:text-error transition-all w-8 h-8 rounded-lg hover:bg-error-container/20 flex items-center justify-center"
+                                  title="Hapus dari daftar kelola"
+                                >
+                                  <span className="material-symbols-outlined text-[16px]">person_remove</span>
+                                </button>
+                              )}
+                              <span className={`inline-flex items-center gap-xs px-sm py-0.5 rounded-full text-[9px] font-bold uppercase ${aktif ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' : 'bg-surface-container text-on-surface-variant border border-outline-variant/50'}`}>
+                                <span className={`w-1.5 h-1.5 rounded-full ${aktif ? 'bg-emerald-500 animate-pulse' : 'bg-outline'}`} />
+                                {aktif ? 'Aktif' : 'Idle'}
+                              </span>
+                            </div>
                           </div>
                           {aktif && <p className="font-label-sm text-[10px] text-primary mt-sm truncate border-t border-outline-variant/20 pt-sm">{aktif.jalur}</p>}
                         </div>
@@ -642,10 +678,10 @@ export default function AdminPage() {
               <div className="p-md border-b border-outline-variant">
                 <div className="flex items-center justify-between mb-sm">
                   <h2 className="font-h3 text-h3 font-bold text-on-surface flex items-center gap-sm">
-                    <span className="material-symbols-outlined text-primary" style={{ fontVariationSettings: "'FILL' 1" }}>radar</span>
+                    <span className={`material-symbols-outlined ${user?.role === 'qc' ? 'text-emerald-700' : 'text-primary'}`} style={{ fontVariationSettings: "'FILL' 1" }}>radar</span>
                     Monitoring
                   </h2>
-                  <span className={`px-sm py-xs rounded-full font-label-sm text-[10px] uppercase font-bold ${activeTrackings.length > 0 ? 'bg-primary-container text-on-primary-container' : 'bg-surface-container text-on-surface-variant'}`}>
+                  <span className={`px-sm py-xs rounded-full font-label-sm text-[10px] uppercase font-bold ${activeTrackings.length > 0 ? (user?.role === 'qc' ? 'bg-emerald-100 text-emerald-800' : 'bg-primary-container text-on-primary-container') : 'bg-surface-container text-on-surface-variant'}`}>
                     {activeTrackings.length} aktif
                   </span>
                 </div>
@@ -667,7 +703,13 @@ export default function AdminPage() {
                       const isSelected = selectedTracking?.trackingId === track.trackingId;
                       return (
                         <button key={track.trackingId} onClick={() => setSelectedTracking(isSelected ? null : track)}
-                          className={`w-full text-left rounded-xl p-md border-2 transition-all duration-200 ${isSelected ? 'border-primary bg-primary-container/10 shadow-md' : 'border-outline-variant bg-surface-container-lowest hover:border-primary/30'}`}>
+                          className={`w-full text-left rounded-xl p-md border-2 transition-all duration-200 ${
+                            isSelected
+                              ? user?.role === 'qc'
+                                ? 'border-emerald-600 bg-emerald-50/10 shadow-md'
+                                : 'border-primary bg-primary-container/10 shadow-md'
+                              : 'border-outline-variant bg-surface-container-lowest hover:border-primary/30'
+                          }`}>
                           <div className="flex items-center gap-sm mb-sm">
                             <div className="w-10 h-10 rounded-full flex items-center justify-center font-bold text-sm shrink-0 text-white shadow-sm" style={{ background: color }}>{track.petugas.nama.substring(0, 2).toUpperCase()}</div>
                             <div className="flex-1 min-w-0">
@@ -675,13 +717,13 @@ export default function AdminPage() {
                               <p className="font-label-sm text-[10px] text-on-surface-variant">{track.petugas.nipp}</p>
                             </div>
                             <div className="flex items-center gap-xs shrink-0">
-                              <span className="w-2 h-2 bg-primary rounded-full animate-pulse" />
-                              <span className="font-label-sm text-[10px] text-primary font-bold uppercase">Live</span>
+                              <span className={`w-2 h-2 ${user?.role === 'qc' ? 'bg-emerald-500' : 'bg-primary'} rounded-full animate-pulse`} />
+                              <span className={`font-label-sm text-[10px] ${user?.role === 'qc' ? 'text-emerald-600' : 'text-primary'} font-bold uppercase`}>Live</span>
                             </div>
                           </div>
                           <div className="bg-surface-container-low/50 rounded-lg p-sm space-y-xs">
                             <div className="flex items-center gap-xs">
-                              <span className="material-symbols-outlined text-[14px] text-primary">route</span>
+                              <span className={`material-symbols-outlined text-[14px] ${user?.role === 'qc' ? 'text-emerald-600' : 'text-primary'}`}>route</span>
                               <span className="font-label-sm text-[11px] text-on-surface font-semibold truncate">{track.tugas.jalur}</span>
                             </div>
                             <p className="font-label-sm text-[10px] text-on-surface-variant pl-[18px]">{track.tugas.startPointName} → {track.tugas.endPointName}</p>
@@ -700,7 +742,7 @@ export default function AdminPage() {
               </div>
               <div className="p-sm border-t border-outline-variant bg-surface-container-lowest">
                 <div className="flex items-center gap-xs text-on-surface-variant">
-                  <span className="w-1.5 h-1.5 bg-primary rounded-full animate-pulse" />
+                  <span className={`w-1.5 h-1.5 ${user?.role === 'qc' ? 'bg-emerald-500' : 'bg-primary'} rounded-full animate-pulse`} />
                   <span className="font-label-sm text-[10px]">Auto-refresh 10 detik</span>
                 </div>
               </div>
@@ -728,7 +770,7 @@ export default function AdminPage() {
                 <div className="flex items-center gap-xs"><span className="text-error">⚠</span><span className="text-on-surface">Darurat</span></div>
               </div>
               <div className="absolute top-4 right-4 bg-white/80 backdrop-blur-sm rounded-full px-sm py-xs text-[10px] text-on-surface-variant font-label-sm flex items-center gap-xs z-[1000]">
-                <span className="w-1.5 h-1.5 bg-primary rounded-full animate-pulse" />
+                <span className={`w-1.5 h-1.5 ${user?.role === 'qc' ? 'bg-emerald-500' : 'bg-primary'} rounded-full animate-pulse`} />
                 Live • {activeTrackings.length} petugas
               </div>
             </main>

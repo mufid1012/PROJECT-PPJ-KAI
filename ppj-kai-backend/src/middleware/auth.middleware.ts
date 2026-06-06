@@ -32,3 +32,14 @@ export const requireAdmin = (req: Request, res: Response, next: NextFunction) =>
 
   next();
 };
+
+export const requireAdminOrQC = (req: Request, res: Response, next: NextFunction) => {
+  const user = (req as any).user;
+
+  if (!user || (user.role !== 'admin' && user.role !== 'qc')) {
+    return res.status(403).json({ success: false, message: 'Access denied. Admin or QC only.' });
+  }
+
+  next();
+};
+

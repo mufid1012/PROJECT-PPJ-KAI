@@ -55,7 +55,7 @@ export default function LoginPage() {
         localStorage.setItem('token', res.data.token);
         localStorage.setItem('user', JSON.stringify(res.data.user));
         const role = res.data.user?.role;
-        router.push(role === 'admin' ? '/admin' : '/dashboard');
+        router.push(role === 'admin' || role === 'qc' ? '/admin' : '/dashboard');
       }
     } catch (err: any) {
       setError(err.response?.data?.message || 'Gagal login. Periksa NIPP dan Password.');
@@ -214,9 +214,17 @@ export default function LoginPage() {
               >
                 {isLoading ? 'Memverifikasi...' : 'Masuk'} <span className="material-symbols-outlined text-[18px]">arrow_forward</span>
               </button>
+
+              <button
+                type="button"
+                onClick={() => router.push('/guest')}
+                className="w-full h-12 border border-outline-variant text-primary hover:bg-slate-50 rounded-xl font-label-sm text-label-sm transition-all flex items-center justify-center gap-2 uppercase tracking-wider shadow-sm"
+              >
+                <span className="material-symbols-outlined text-[18px]">visibility</span> Pantau Sebagai Guest
+              </button>
+
               <p className="font-body-md text-body-md text-on-surface-variant text-center">
                 Belum ada akun? <Link className="text-primary font-semibold hover:underline" href="/register">Daftar Disini</Link>
-
               </p>
             </div>
           </form>
