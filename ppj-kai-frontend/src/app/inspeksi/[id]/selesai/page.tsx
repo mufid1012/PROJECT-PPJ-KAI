@@ -56,11 +56,13 @@ function formatTime(dateStr: string | null) {
   return new Date(dateStr).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' });
 }
 
-function formatDuration(menit: number | null) {
-  if (!menit) return '-';
-  const h = Math.floor(menit / 60);
-  const m = menit % 60;
-  return h > 0 ? `${h}j ${m}m` : `${m} menit`;
+function formatDuration(detik: number | null) {
+  if (!detik) return '-';
+  const h = Math.floor(detik / 3600);
+  const m = Math.floor((detik % 3600) / 60);
+  if (h > 0) return `${h}j ${m}m`;
+  if (m > 0) return `${m} menit`;
+  return `${detik} detik`;
 }
 
 export default function InspeksiSelesaiPage({ params }: { params: { id: string } }) {

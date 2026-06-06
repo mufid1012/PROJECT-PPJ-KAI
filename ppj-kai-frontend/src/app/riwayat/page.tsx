@@ -96,13 +96,18 @@ export default function RiwayatPage() {
                     </div>
                     <div>
                       <p className="text-on-surface-variant font-label-sm text-label-sm mb-xs">Durasi</p>
-                      <p className="font-data-heavy text-primary">{tugas.tracking?.[0]?.durasi || 0} menit</p>
+                      <p className="font-data-heavy text-primary">{
+                        (() => {
+                          const d = tugas.tracking?.[0]?.durasi || 0;
+                          if (d >= 3600) return `${Math.floor(d / 3600)}j ${Math.floor((d % 3600) / 60)}m`;
+                          if (d >= 60) return `${Math.floor(d / 60)} menit`;
+                          if (d > 0) return `${d} detik`;
+                          return '-';
+                        })()
+                      }</p>
                     </div>
                   </div>
                 </div>
-                <div className="w-16 h-16 rounded-lg bg-surface-container flex items-center justify-center shrink-0 border border-outline-variant">
-                    <span className="material-symbols-outlined text-primary text-[28px]" style={{ fontVariationSettings: "'FILL' 1" }}>train</span>
-                  </div>
               </Link>
             ))
           )}
